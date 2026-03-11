@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastf1>=3.8.1",
+    "sqlmodel>=0.0.37",
     "streamlit>=1.55.0",
 ]
