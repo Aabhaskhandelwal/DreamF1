@@ -191,6 +191,10 @@ def score_race_officially(event_id: int, session: Session = Depends(get_session)
     # 2. Extract the Official Real-World Race Data
     official_results = race_session.results
     
+
+    if official_results.empty:
+        raise HTTPException(status_code=400, detail="FastF1 does not have the results for this race yet! Please wait until it finishes.")
+        
     actual_first = official_results.iloc[0]['Abbreviation']
     actual_second = official_results.iloc[1]['Abbreviation']
     actual_third = official_results.iloc[2]['Abbreviation']
