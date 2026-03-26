@@ -1,34 +1,39 @@
-import fastf1
-import matplotlib.pyplot as plt
-import numpy as np
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from app.database import create_db_and_tables
+import fastf1 as ff1
+import pandas as pd # FastF1 uses pandas
 
-# Enable caching
-# fastf1.Cache.enable_cache("./cache")
+# Ensure FastF1 caching is enabled so we don't spam their servers
+ff1.Cache.enable_cache("./cache")
 
-# Load session data
-# Example: 2023 Australian Grand Prix, Practice 1
-session = fastf1.get_session(2023, 'Australia', 'FP1')
-session.load()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Starting up... Creating database tables!")
+    create_db_and_tables()
+    yield
+    print("Shutting down...")
 
-# Get lap data
-laps = session.laps
+app = FastAPI(lifespan=lifespan)
 
-# Filter for a specific driver (e.g., Max Verstappen)
-ver_laps = laps.pick_driver('VER')
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to MyF1Circle API!"}
 
-# Get lap times
-lap_times = ver_laps['LapTime']
-
-# Convert to seconds for plotting
-lap_times_sec = lap_times.total_seconds()
-
-# Create plot
-plt.figure(figsize=(10, 6))
-plt.plot(lap_times_sec, marker='o', linestyle='-')
-plt.title('Max Verstappen Lap Times - 2023 Australian GP FP1')
-plt.xlabel('Lap Number')
-plt.ylabel('Lap Time (seconds)')
-plt.grid(True)
-plt.show()
-
-print("Plot generated successfully!")
+# --- NEW SCHEDULE ENDPOINT ---
+@app.get("/api/schedule")
+def get_schedule():
+    # 1. Fetch the 2026 schedule from FastF1
+    event = ff1.get_event_schedule(2026)
+    
+    # 2. Filter out just the columns we care about 
+    filtered_events = event[event['RoundNumber'] > 0][['RoundNumber', 'EventName', 'Country', 'EventDate']]
+    
+    # 3. Convert dates to strings so the browser can read them
+    filtered_events['EventDate'] = filtered_events['EventDate'].dt.strftime('%Y-%m-%d')
+    
+    # 4. Convert to a list of dictionaries
+    list_of_dicts = filtered_events.to_dict(orient='records')
+    
+    # 5. Return the JSON list directly to the browser!
+    return list_of_dicts
