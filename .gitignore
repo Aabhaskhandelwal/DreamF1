@@ -5,6 +5,13 @@ build/
 dist/
 wheels/
 *.egg-info
-
+*.lock
+*.toml
 # Virtual environments
 .venv
+.env
+.vscode
+backend\cache
+notes
+backend/cache/fastf1_http_cache.sqlite
+todo.md
