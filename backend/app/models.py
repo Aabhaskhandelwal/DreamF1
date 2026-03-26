@@ -25,6 +25,33 @@ class Event(SQLModel,table=True):
     event_date:date
     is_completed:bool=Field(default=False)
 
+class Prediction(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    event_id: int = Field(foreign_key="event.id")
+    
+    first_place: str
+    second_place: str
+    third_place: str
+    
+    # The bonus fields you requested!
+    fastest_lap: Optional[str] = None
+    dnf_driver: Optional[str] = None
+    pole_position: Optional[str] = None
+    
+    points_earned: int = Field(default=0)
+
+# Like UserCreate, this is the Pydantic "bouncer" that tells 
+# FastAPI what to expect from the frontend form.
+class PredictionCreate(BaseModel):
+    event_id: int
+    first_place: str
+    second_place: str
+    third_place: str
+    fastest_lap: Optional[str] = None
+    dnf_driver: Optional[str] = None
+    pole_position: Optional[str] = None
+
 class UserCreate(BaseModel):
     username:str
     email:str

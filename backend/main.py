@@ -2,8 +2,8 @@ from fastapi import FastAPI,Depends,HTTPException
 from sqlmodel import Session,select
 from contextlib import asynccontextmanager
 from app.database import create_db_and_tables,get_session
-from app.models import User,UserCreate
-from app.auth import get_password_hash,verify_password,create_access_token
+from app.models import User,UserCreate,Prediction,PredictionCreate
+from app.auth import get_password_hash,verify_password,create_access_token,get_current_user
 import fastf1 as ff1
 import pandas as pd # FastF1 uses pandas
 from fastapi.security import OAuth2PasswordRequestForm
@@ -86,3 +86,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = D
     
     # 4. Give the token to the user!
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+
+@app.post("/api/predict")
+def submit_prediction(
+    prediction_data: PredictionCreate, 
+    current_user: User = Depends(get_current_user), # THE SECURITY GUARD IS HERE!
+    session: Session = Depends(get_session)
+):
+    # Map the Pydantic data into our actual Database Model
+    new_prediction = Prediction(
+        user_id=current_user.id, # We know exactly who this is now!
+        event_id=prediction_data.event_id,
+        first_place=prediction_data.first_place,
+        second_place=prediction_data.second_place,
+        third_place=prediction_data.third_place,
+        fastest_lap=prediction_data.fastest_lap,
+        dnf_driver=prediction_data.dnf_driver,
+        pole_position=prediction_data.pole_position
+    )
+    
+    session.add(new_prediction)
+    session.commit()
+    
+    return {"message": "Prediction locked in!", "prediction": new_prediction}
