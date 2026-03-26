@@ -56,3 +56,11 @@ class UserCreate(BaseModel):
     username:str
     email:str
     password:str
+
+class RaceResultCreate(BaseModel):
+    first_place: str
+    second_place: str
+    third_place: str
+    fastest_lap: str
+    pole_position: str
+    dnf_drivers: list[str] = [] 
