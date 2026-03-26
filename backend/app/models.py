@@ -44,7 +44,6 @@ class Prediction(SQLModel, table=True):
 # Like UserCreate, this is the Pydantic "bouncer" that tells 
 # FastAPI what to expect from the frontend form.
 class PredictionCreate(BaseModel):
-    event_id: int
     first_place: str
     second_place: str
     third_place: str

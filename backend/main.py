@@ -124,27 +124,20 @@ def submit_prediction(
     if not next_race:
         raise HTTPException(status_code=400, detail="The F1 Season is officially over!")
         
-    # 2. THE SECURITY RULE: Is the user trying to predict a race that isn't the next one?
-    if prediction_data.event_id != next_race.id:
-        valid_date = next_race.event_date.strftime('%B %d')
-        raise HTTPException(
-            status_code=400, 
-            detail=f"You can only predict the next upcoming race: {next_race.event_name} on {valid_date}!"
-        )  
-    # 3. Check if they already made a prediction for this race
+
+    #Check if they already made a prediction for this specific race
     existing_prediction = session.exec(
         select(Prediction)
         .where(Prediction.user_id == current_user.id)
-        .where(Prediction.event_id == prediction_data.event_id)
+        .where(Prediction.event_id == next_race.id) # <-- Use next_race here!
     ).first()
     
     if existing_prediction:
-        raise HTTPException(status_code=400, detail="You already predicted this race! No cheating!")
-
-    # 4. Map the Pydantic data into our actual Database Model
+        raise HTTPException(status_code=400, detail="You already predicted this race!")
+    # 3. Map the Pydantic data into our actual Database Model
     new_prediction = Prediction(
         user_id=current_user.id, 
-        event_id=prediction_data.event_id,
+        event_id=next_race.id, 
         first_place=prediction_data.first_place,
         second_place=prediction_data.second_place,
         third_place=prediction_data.third_place,
@@ -156,7 +149,7 @@ def submit_prediction(
     session.add(new_prediction)
     session.commit()
     
-    return {"message": "Prediction securely locked in!", "prediction": new_prediction}
+    return {"message": f"Prediction securely locked in for {next_race.event_name}!", "prediction": new_prediction}
 
 
 
