@@ -1,7 +1,14 @@
 #define the tables
+'''
+why different? why not just use sql model for this?
+SQLModel → database + ORM model
+Pydantic → validation + input/output schema
+'''
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import date
+from pydantic import BaseModel
+
 
 class User(SQLModel,table=True):
     id:Optional[int]=Field(default=None,primary_key=True)#optional as database autogenerates it
@@ -17,3 +24,8 @@ class Event(SQLModel,table=True):
     country:str
     event_date:date
     is_completed:bool=Field(default=False)
+
+class UserCreate(BaseModel):
+    username:str
+    email:str
+    password:str
