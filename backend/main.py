@@ -8,6 +8,7 @@ import fastf1 as ff1
 import pandas as pd # FastF1 uses pandas
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 # Ensure FastF1 caching is enabled so we don't spam their servers
 ff1.Cache.enable_cache("./cache")
 
@@ -19,6 +20,14 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"], #GET,Post etc...
+    allow_headers=["*"],#auth tokens etc
+)
+
 
 @app.get("/")
 def read_root():
