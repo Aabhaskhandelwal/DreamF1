@@ -15,3 +15,5 @@ backend\cache
 notes
 backend/cache/fastf1_http_cache.sqlite
 todo.md
+f1-telemetry-master
+task.md
