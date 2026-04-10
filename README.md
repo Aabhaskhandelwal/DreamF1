@@ -1,6 +1,9 @@
 # DreamF1 🏎️
 A full-stack Formula 1 platform. View Telemetry and Pick your podium, pole, fastest lap, and DNF before each race — earn points when the real results come in. Track between Friends.
 
+# UI
+![dashboard image](frontend-prototype/public/dashboard.png)
+
 ## What it does
 - Register and authenticate via JWT
 - View the live 2026 F1 race calendar
@@ -45,6 +48,4 @@ SECRET_KEY=your_secret_key
 ## Ongoing
 
 - [ ] Next.js production frontend
-- [ ] LLM prediction assistant
-- [ ] Live telemetry from FastF1
-- [ ] Private leaderboards and friend groups
+- [ ] Chatbot in sidebar
