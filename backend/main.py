@@ -1,4 +1,5 @@
 import secrets
+import math
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select, func
 from contextlib import asynccontextmanager
@@ -6,9 +7,21 @@ from app.database import create_db_and_tables, get_session
 from app.models import User, UserCreate, Prediction, PredictionCreate, Event, GroupCreate, GroupMember, Group, GroupJoin
 from app.auth import get_password_hash, verify_password, create_access_token, get_current_user
 import fastf1 as ff1
+import pandas as pd
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+
+
+def _clean(obj):
+    """Recursively replace NaN/inf floats with None for JSON serialization."""
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_clean(v) for v in obj]
+    return obj
 
 ff1.Cache.enable_cache("./cache")
 
@@ -159,7 +172,7 @@ def score_race(event_id: int, session: Session = Depends(get_session)):
     actual_p3 = results.iloc[2]['Abbreviation']
     actual_fastest = race_session.laps.pick_fastest()['Driver']
     actual_pole = quali_session.results.iloc[0]['Abbreviation']
-    actual_dnfs = results[~results['Status'].str.contains('Finished|\+', regex=True)]['Abbreviation'].tolist()
+    actual_dnfs = results[~results['Status'].str.contains(r'Finished|\+', regex=True)]['Abbreviation'].tolist()
 
     predictions = session.exec(select(Prediction).where(Prediction.event_id == event_id)).all()
     for pred in predictions:
@@ -198,7 +211,7 @@ def create_group(data: GroupCreate, current_user: User = Depends(get_current_use
 
     session.add(GroupMember(user_id=current_user.id, group_id=group.id))
     session.commit()
-    return group
+    return {"id": group.id, "name": group.name, "invite_code": group.invite_code, "created_by": group.created_by}
 
 
 @app.post("/api/groups/join")
@@ -267,10 +280,10 @@ def get_speed_trace(year: int, round_num: int):
     if race.results.empty:
         raise HTTPException(status_code=404, detail="No results for this session")
 
-    top3 = race.results.iloc[:3]['Abbreviation'].tolist()
+    top10 = race.results.iloc[:10]['Abbreviation'].tolist()
     drivers_data = {}
 
-    for drv in top3:
+    for drv in top10:
         try:
             fastest = race.laps.pick_driver(drv).pick_fastest()
             tel = fastest.get_telemetry()[['Distance', 'Speed']].dropna()
@@ -284,7 +297,7 @@ def get_speed_trace(year: int, round_num: int):
         except Exception:
             continue
 
-    return {"session": race.event['EventName'], "drivers": drivers_data}
+    return _clean({"session": race.event['EventName'], "drivers": drivers_data})
 
 
 @app.get("/api/telemetry/{year}/{round_num}/tyres")
@@ -295,7 +308,7 @@ def get_tyre_strategy(year: int, round_num: int):
     except Exception:
         raise HTTPException(status_code=404, detail="Session data not available yet")
 
-    drivers = race.results['Abbreviation'].tolist()[:10]
+    drivers = race.results['Abbreviation'].tolist()
     stints = []
 
     for drv in drivers:
@@ -321,15 +334,242 @@ def get_tyre_strategy(year: int, round_num: int):
 def get_quali_laptimes(year: int, round_num: int):
     try:
         quali = ff1.get_session(year, round_num, 'Q')
-        quali.load(telemetry=False, weather=False)
-    except Exception:
-        raise HTTPException(status_code=404, detail="Session data not available yet")
+        quali.load(laps=True, telemetry=False, weather=False)
 
-    results = quali.results[['Abbreviation', 'Q1', 'Q2', 'Q3']].copy()
-    # convert timedelta to seconds for JSON serialisation
-    for col in ['Q1', 'Q2', 'Q3']:
-        results[col] = results[col].apply(
-            lambda x: round(x.total_seconds(), 3) if hasattr(x, 'total_seconds') else None
-        )
+        if quali.results is None or quali.results.empty:
+            raise HTTPException(status_code=404, detail="No qualifying results available for this round")
 
-    return {"session": quali.event['EventName'], "results": results.to_dict(orient='records')}
+        available_cols = quali.results.columns.tolist()
+        keep = [c for c in ['Abbreviation', 'Q1', 'Q2', 'Q3'] if c in available_cols]
+        if 'Abbreviation' not in keep:
+            raise HTTPException(status_code=500, detail=f"Unexpected results columns: {available_cols}")
+
+        results = quali.results[keep].copy()
+        for col in ['Q1', 'Q2', 'Q3']:
+            if col in results.columns:
+                results[col] = results[col].apply(
+                    lambda x: round(x.total_seconds(), 3) if pd.notna(x) and hasattr(x, 'total_seconds') else None
+                )
+
+        return _clean({"session": quali.event['EventName'], "results": results.to_dict(orient='records')})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/laptimes")
+def get_lap_times(year: int, round_num: int):
+    """Lap time evolution for top 5 finishers — shows pace over the race."""
+    try:
+        race = ff1.get_session(year, round_num, 'R')
+        race.load(laps=True, telemetry=False, weather=False)
+
+        if race.results is None or race.results.empty:
+            raise HTTPException(status_code=404, detail="No race results available")
+
+        all_drivers = race.results['Abbreviation'].tolist()
+        drivers_data = {}
+
+        for drv in all_drivers:
+            laps = race.laps.pick_driver(drv).pick_quicklaps()
+            if laps.empty:
+                continue
+            drivers_data[drv] = {
+                "lap_numbers": laps['LapNumber'].astype(int).tolist(),
+                "lap_times": laps['LapTime'].apply(
+                    lambda x: round(x.total_seconds(), 3) if pd.notna(x) and hasattr(x, 'total_seconds') else None
+                ).tolist(),
+                "compound": laps['Compound'].fillna('UNKNOWN').tolist(),
+            }
+
+        return _clean({"session": race.event['EventName'], "drivers": drivers_data})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/positions")
+def get_race_positions(year: int, round_num: int):
+    """Position of each driver lap-by-lap throughout the race."""
+    try:
+        race = ff1.get_session(year, round_num, 'R')
+        race.load(laps=True, telemetry=False, weather=False)
+
+        if race.results is None or race.results.empty:
+            raise HTTPException(status_code=404, detail="No race results available")
+
+        all_drivers = race.results['Abbreviation'].tolist()
+        drivers_data = {}
+
+        for drv in all_drivers:
+            laps = race.laps.pick_driver(drv)[['LapNumber', 'Position']].dropna()
+            if laps.empty:
+                continue
+            drivers_data[drv] = {
+                "lap_numbers": laps['LapNumber'].astype(int).tolist(),
+                "positions": laps['Position'].astype(int).tolist(),
+            }
+
+        return _clean({"session": race.event['EventName'], "drivers": drivers_data})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/gaps")
+def get_gap_to_leader(year: int, round_num: int):
+    """Gap to race leader per lap for top 5 drivers."""
+    try:
+        race = ff1.get_session(year, round_num, 'R')
+        race.load(laps=True, telemetry=False, weather=False)
+
+        if race.results is None or race.results.empty:
+            raise HTTPException(status_code=404, detail="No race results available")
+
+        all_drivers = race.results['Abbreviation'].tolist()
+
+        # Build a lap-time matrix and compute cumulative gap to leader
+        leader = all_drivers[0]
+        leader_laps = race.laps.pick_driver(leader).pick_quicklaps()[['LapNumber', 'LapTime']].dropna()
+        leader_cumulative = leader_laps.set_index('LapNumber')['LapTime'].apply(
+            lambda x: x.total_seconds() if pd.notna(x) else None
+        ).dropna().cumsum()
+
+        drivers_data = {}
+        for drv in all_drivers:
+            laps = race.laps.pick_driver(drv).pick_quicklaps()[['LapNumber', 'LapTime']].dropna()
+            if laps.empty:
+                continue
+            drv_cumulative = laps.set_index('LapNumber')['LapTime'].apply(
+                lambda x: x.total_seconds() if pd.notna(x) else None
+            ).dropna().cumsum()
+
+            common_laps = sorted(set(leader_cumulative.index) & set(drv_cumulative.index))
+            gaps = [(drv_cumulative[lap] - leader_cumulative[lap]) for lap in common_laps]
+
+            drivers_data[drv] = {
+                "lap_numbers": common_laps,
+                "gap_seconds": [round(g, 3) for g in gaps],
+            }
+
+        return _clean({"session": race.event['EventName'], "drivers": drivers_data})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/race_summary")
+def get_race_summary(year: int, round_num: int):
+    """Full classification for all drivers — avg pace, positions gained, DNF, fastest lap."""
+    try:
+        race = ff1.get_session(year, round_num, 'R')
+        race.load(laps=True, telemetry=False, weather=False)
+
+        if race.results is None or race.results.empty:
+            raise HTTPException(status_code=404, detail="No race results available")
+
+        try:
+            fastest_lap_driver = race.laps.pick_fastest()['Driver']
+        except Exception:
+            fastest_lap_driver = None
+
+        summary = []
+        for _, row in race.results.iterrows():
+            drv = row['Abbreviation']
+            drv_laps = race.laps.pick_driver(drv)
+            valid_times = drv_laps['LapTime'].dropna()
+
+            avg_s = round(valid_times.mean().total_seconds(), 3) if not valid_times.empty else None
+            best_s = round(valid_times.min().total_seconds(), 3) if not valid_times.empty else None
+            total_laps = int(drv_laps['LapNumber'].max()) if not drv_laps.empty else 0
+
+            grid_raw = row.get('GridPosition', None)
+            finish_raw = row.get('Position', None)
+            try:
+                grid = int(float(grid_raw)) if grid_raw is not None and str(grid_raw) not in ('', 'nan') else None
+            except Exception:
+                grid = None
+            try:
+                finish = int(float(finish_raw)) if finish_raw is not None and str(finish_raw) not in ('', 'nan') else None
+            except Exception:
+                finish = None
+
+            positions_gained = (grid - finish) if (grid and finish) else None
+            status = str(row.get('Status', ''))
+            # Finishers: "Finished", "+N Lap(s)" style, or "Lapped"
+            is_dnf = status not in ('Finished', 'Lapped') and not status.startswith('+')
+
+            summary.append({
+                "abbreviation": drv,
+                "finish_position": finish,
+                "grid_position": grid,
+                "positions_gained": positions_gained,
+                "status": status,
+                "is_dnf": is_dnf,
+                "dnf_lap": total_laps if is_dnf else None,
+                "points": float(row.get('Points', 0) or 0),
+                "avg_lap_time": avg_s,
+                "best_lap_time": best_s,
+                "total_laps": total_laps,
+                "fastest_lap": (drv == fastest_lap_driver),
+            })
+
+        return _clean({"session": race.event['EventName'], "results": summary})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/sector_times")
+def get_sector_times(year: int, round_num: int):
+    """Best sector times per driver from qualifying — for pole prediction."""
+    try:
+        quali = ff1.get_session(year, round_num, 'Q')
+        quali.load(laps=True, telemetry=False, weather=False)
+
+        if quali.results is None or quali.results.empty:
+            raise HTTPException(status_code=404, detail="No qualifying results available")
+
+        drivers_data = {}
+        for drv in quali.results['Abbreviation'].tolist():
+            try:
+                laps = quali.laps.pick_driver(drv).pick_quicklaps()
+                if laps.empty:
+                    continue
+
+                def _sec(col):
+                    if col not in laps.columns:
+                        return None
+                    valid = laps[col].dropna()
+                    if valid.empty:
+                        return None
+                    val = valid.min()
+                    return round(val.total_seconds(), 3) if pd.notna(val) and hasattr(val, 'total_seconds') else None
+
+                drivers_data[drv] = {"s1": _sec('Sector1Time'), "s2": _sec('Sector2Time'), "s3": _sec('Sector3Time')}
+            except Exception:
+                continue
+
+        for sec in ['s1', 's2', 's3']:
+            times = {d: v[sec] for d, v in drivers_data.items() if v.get(sec) is not None}
+            if times:
+                best_drv = min(times, key=times.get)
+                for d in drivers_data:
+                    drivers_data[d][f'{sec}_best'] = (d == best_drv)
+
+        return _clean({"session": quali.event['EventName'], "drivers": drivers_data})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
