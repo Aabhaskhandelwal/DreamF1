@@ -6,8 +6,9 @@ import pandas as pd
 import numpy as np
 from datetime import date
 import base64
+import os
 
-API_URL = "http://localhost:8080"
+API_URL = os.getenv("API_URL", "http://localhost:8080")
 
 # 2026 Season
 TEAM_COLORS = {
@@ -439,16 +440,19 @@ with tab_season:
     col1.metric("Total Races", len(schedule))
     col2.metric("Completed", len(past_races))
     col3.metric("Remaining", len(upcoming))
-    col4.metric("Next Race", upcoming[0]["event_name"] if upcoming else "Season Over")
+    event = upcoming[0] if upcoming else {}
+    event_name = event.get("event_name") or event.get("name") or "Season Over"
+    col4.metric("Next Race", event_name)
 
     st.divider()
 
     if upcoming:
         next_r = upcoming[0]
+        next_r_name = next_r.get("event_name") or next_r.get("name") or "Next Race"
         st.markdown(f"""
         <div class="race-card">
-            <div class="race-card-title">▶ {next_r["event_name"]}</div>
-            <div class="race-card-date">{next_r.get("country", "")} · {next_r["event_date"]} · Round {next_r.get("round_number", "")}</div>
+            <div class="race-card-title">▶ {next_r_name}</div>
+            <div class="race-card-date">{next_r.get("country", "")} · {next_r.get("event_date", "")} · Round {next_r.get("round_number", "")}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -532,7 +536,7 @@ with tab_telemetry:
         if not candidates:
             st.info("No race data available — make sure the backend is running and the schedule is loaded.")
         else:
-            round_options = {r["event_name"]: r["round_number"] for r in reversed(candidates)}
+            round_options = {(r.get("event_name") or r.get("name") or f"Round {r.get('round_number','?')}"): r["round_number"] for r in reversed(candidates)}
             default_race = list(round_options.keys())[0]   # most recent first
             selected_event = st.selectbox("Race", list(round_options.keys()),
                                           index=0, label_visibility="collapsed")
@@ -771,10 +775,11 @@ with tab_predict:
         st.warning("No upcoming races to predict.")
     else:
         next_race = upcoming[0]
+        next_race_name = next_race.get("event_name") or next_race.get("name") or "Next Race"
         st.markdown(f"""
         <div class="race-card">
-            <div class="race-card-title">Predicting: {next_race["event_name"]}</div>
-            <div class="race-card-date">Round {next_race.get("round_number", "")} · {next_race["event_date"]}</div>
+            <div class="race-card-title">Predicting: {next_race_name}</div>
+            <div class="race-card-date">Round {next_race.get("round_number", "")} · {next_race.get("event_date", "")}</div>
         </div>
         """, unsafe_allow_html=True)
 
