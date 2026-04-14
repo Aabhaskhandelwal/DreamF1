@@ -188,6 +188,7 @@ hr {{ border-color: #1e1e1e !important; }}
 ::-webkit-scrollbar-thumb:hover {{ background: #555; }}
 
 #MainMenu, footer, header {{ visibility: hidden; }}
+div[data-testid="collapsedControl"] {{ visibility: visible !important; position: relative; z-index: 999999; }}
 
 /* custom components */
 .brand {{ font-family: 'Orbitron', monospace; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.05em; color: #f3f3f3; }}
@@ -542,7 +543,7 @@ with tab_telemetry:
                                           index=0, label_visibility="collapsed")
             selected_round = round_options[selected_event]
 
-        telem_key = f"telem_{year}_{selected_round}"
+            telem_key = f"telem_{year}_{selected_round}"
         if not st.session_state.get(telem_key):
             st.markdown("""<div style="text-align:center;padding:3rem 0;color:#333;">
                 <div style="font-family:'Orbitron',monospace;font-size:0.9rem;margin-bottom:0.4rem;letter-spacing:0.1em;">TELEMETRY</div>
