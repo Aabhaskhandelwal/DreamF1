@@ -9,9 +9,9 @@ Compete with friends on F1 race outcomes. Pick your podium, pole, fastest lap, a
 - Telemetry dashboard — qualifying times, tyre strategy, pace rankings
 
 ## UI
-<img src="frontend-prototype/public/dashboard.png" height="150"/>
-<img src="frontend-prototype/public/telemetry.png" height="150"/>
-<img src="frontend-prototype/public/predict.png" height="150"/>
+<img src="frontend-prototype/public/dashboard.png" height="250"/>
+<img src="frontend-prototype/public/telemetry.png" height="250"/>
+<img src="frontend-prototype/public/predict.png" height="250"/>
 
 ## Stack
 
