@@ -313,13 +313,16 @@ with st.sidebar:
 token = st.session_state.get("token")
 headers = {"Authorization": f"Bearer {token}"} if token else {}
 
-# ── Backend health check ──────────────────────────────────────────
-_backend_online = False
-try:
-    _r = requests.get(f"{API_URL}/", timeout=2)
-    _backend_online = _r.status_code == 200
-except Exception:
-    pass
+# ── Backend health check ─────────────────
+#this happens on every interaction with a 2 second timeout so this can block the whole page
+if "backend_online" not in st.session_state:
+    try:
+        _r = requests.get(f"{API_URL}/", timeout=2)
+        st.session_state["backend_online"] = _r.status_code == 200
+    except Exception:
+        st.session_state["backend_online"] = False
+_backend_online = st.session_state["backend_online"]
+
 
 if not _backend_online:
     st.markdown("""
@@ -420,8 +423,11 @@ def fetch_sector_times(year, round_num):
     except Exception as e:
         return {"_error": str(e)}
 
+#cache fetch schedule so that faster reload
+if "schedule_cache" not in st.session_state:
+    st.session_state["schedule_cache"] = fetch_schedule()
+schedule = st.session_state["schedule_cache"]
 
-schedule = fetch_schedule()
 today = str(date.today())
 upcoming = [r for r in schedule if r.get("event_date", "9999") >= today]
 past_races = [r for r in schedule if r.get("event_date", "9999") < today]
