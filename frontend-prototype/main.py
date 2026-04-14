@@ -71,9 +71,15 @@ bg_b64 = ""
 if bg_path.exists():
     bg_b64 = base64.b64encode(bg_path.read_bytes()).decode()
 
+#@import blocks render on first load 
+st.markdown("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+""", unsafe_allow_html=True)
+
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
 
 html, body, [class*="css"] {{
     font-family: 'DM Sans', sans-serif;
@@ -338,43 +344,66 @@ if not _backend_online:
 
 # ── Cached data fetchers ──────────────────────────────────────────
 
-@st.cache_data(ttl=3600)
+_DATA_DIR = pathlib.Path(__file__).parent / "data"
+
+def _load_disk(filename):
+    p = _DATA_DIR / filename
+    if p.exists():
+        import json
+        return json.loads(p.read_text())
+    return None
+
+@st.cache_data(ttl=3600, persist="disk")
 def fetch_schedule():
+    disk = _load_disk("schedule.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/schedule", timeout=10)
         return res.json() if res.status_code == 200 else []
     except Exception:
         return []
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_speed(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_speed.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/speed", timeout=90)
         return res.json() if res.status_code == 200 else None
     except Exception:
         return None
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_tyres(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_tyres.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/tyres", timeout=30)
         return res.json() if res.status_code == 200 else None
     except Exception:
         return None
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_quali(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_quali.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/quali", timeout=60)
         if res.status_code == 200:
             return res.json()
-        # Expose the actual backend error so we can debug it
         return {"_error": res.json().get("detail", f"HTTP {res.status_code}")}
     except Exception as e:
         return {"_error": str(e)}
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_laptimes(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_laptimes.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/laptimes", timeout=60)
         if res.status_code == 200:
@@ -383,8 +412,11 @@ def fetch_laptimes(year, round_num):
     except Exception as e:
         return {"_error": str(e)}
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_positions(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_positions.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/positions", timeout=60)
         if res.status_code == 200:
@@ -393,8 +425,11 @@ def fetch_positions(year, round_num):
     except Exception as e:
         return {"_error": str(e)}
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_gaps(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_gaps.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/gaps", timeout=60)
         if res.status_code == 200:
@@ -403,8 +438,11 @@ def fetch_gaps(year, round_num):
     except Exception as e:
         return {"_error": str(e)}
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_race_summary(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_race_summary.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/race_summary", timeout=60)
         if res.status_code == 200:
@@ -413,8 +451,11 @@ def fetch_race_summary(year, round_num):
     except Exception as e:
         return {"_error": str(e)}
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, persist="disk")
 def fetch_sector_times(year, round_num):
+    disk = _load_disk(f"{year}_{round_num}_sector_times.json")
+    if disk is not None:
+        return disk
     try:
         res = requests.get(f"{API_URL}/api/telemetry/{year}/{round_num}/sector_times", timeout=60)
         if res.status_code == 200:
