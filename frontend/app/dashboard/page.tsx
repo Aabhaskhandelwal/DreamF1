@@ -28,9 +28,13 @@ async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean 
 export default async function DashboardPage() {
   const { events, backendDown } = await getSchedule()
   const today = new Date().toISOString().split("T")[0]
-  const completed = events.filter((e) => e.is_completed)
-  const upcoming = events.filter((e) => !e.is_completed)
-  const nextRace = upcoming[0] ?? null
+
+  // Use date-based filtering — is_completed only flips after admin scoring,
+  // so unscored past races would incorrectly appear as "upcoming" otherwise.
+  const nextRace = events.find((e) => e.event_date >= today) ?? null
+  const upcomingAfterNext = events.filter((e) => e.event_date > (nextRace?.event_date ?? today)).slice(0, 4)
+  const completedCount = events.filter((e) => e.is_completed).length
+  const remainingCount = events.filter((e) => e.event_date >= today).length
 
   return (
     <div className="min-h-screen px-6 py-8 max-w-7xl mx-auto space-y-8">
@@ -46,12 +50,12 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {nextRace && <NextRaceCard event={nextRace} />}
+      {nextRace && <NextRaceCard event={nextRace} upcomingRaces={upcomingAfterNext} />}
 
       <SeasonMetrics
         total={events.length}
-        completed={completed.length}
-        remaining={upcoming.length}
+        completed={completedCount}
+        remaining={remainingCount}
       />
 
       <CirclesOverview />
