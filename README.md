@@ -4,6 +4,7 @@
 
 **Compete with friends on F1 race outcomes. Pick your podium, pole, fastest lap, and DNF before each race — earn points when results come in.**
 
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -13,23 +14,20 @@
 
 </div>
 
----
-
-**DreamF1** is a self-hosted F1 fantasy prediction platform for groups of friends who actually know their F1. Before each Grand Prix, every player submits a race card — six predictions across podium, pole, fastest lap, and DNF. When results come in, FastF1 does the scoring automatically. No spreadsheets, no manual updates.
-
 ## UI
 
-<img src="frontend-prototype/public/dashboard.png" height="250"/>
-<img src="frontend-prototype/public/telemetry.png" height="250"/>
-<img src="frontend-prototype/public/predict.png" height="250"/>
+<img src="frontend/public/dashboard.png" height="250"/>
+<img src="frontend/public/telemetry.png" height="250"/>
+<img src="frontend/public/predict.png" height="250"/>
 
 ## How it works
 
-1. **Register** — create an account, join or create a friend group.
-2. **View the calendar** — browse the full 2026 F1 season schedule.
-3. **Submit your race card** — lock in picks across six categories before race start.
-4. **Auto-scoring** — FastF1 fetches official results post-race and calculates points.
-5. **Leaderboard** — season standings update automatically after each Grand Prix.
+1. **Register** — create an account, join or create a Circle (friend group).
+2. **Dashboard** — live countdown to the next race, season progress, upcoming rounds strip.
+3. **Submit your race card** — lock in six picks before race start. Duplicate driver prevention built in.
+4. **Telemetry** — race classification, tyre strategies, qualifying times, and speed traces for any past round.
+5. **Auto-scoring** — FastF1 fetches official results post-race and calculates points.
+6. **Leaderboard** — per-Circle standings update after each Grand Prix.
 
 ```text
   [ User ]           [ FastAPI ]              [ FastF1 ]
@@ -45,22 +43,25 @@
 
 ## Features
 
-- **Six pick categories** — P1, P2, P3, Pole Position, Fastest Lap, and DNF per race.
+- **Six pick categories** — P1, P2, P3, Pole Position, Fastest Lap, and optional DNF per race.
+- **Duplicate prevention** — driver dropdowns disable already-selected drivers across sibling slots.
+- **Live countdown** — real-time timer to the next Grand Prix with upcoming rounds strip.
+- **Telemetry dashboard** — race classification, tyre strategy, qualifying deltas, and speed trace per round.
+- **Circles** — private friend groups with invite codes and per-circle leaderboards.
 - **Auto-scoring engine** — results pulled from FastF1 post-race, points computed without manual input.
-- **Telemetry dashboard** — qualifying deltas, tyre strategy breakdowns, and pace rankings per driver.
 - **JWT authentication** — OAuth2 password flow, bcrypt hashing, short-lived tokens.
-- **Friends leaderboard** — group-based season standings across the full 2026 calendar.
+- **Responsive** — dark glassmorphism UI works on mobile, tablet, and desktop.
 
 ## Stack
 
-| Layer    | Tech                          |
-| :------- | :---------------------------- |
-| Backend  | FastAPI, SQLModel, PostgreSQL |
-| Auth     | JWT, OAuth2, bcrypt           |
-| Data     | FastF1, Pandas                |
-| Frontend | Streamlit, Plotly             |
-| AI layer | RAG chatbot, LLM pick advisor |
-| Infra    | Docker, Docker Compose        |
+| Layer     | Tech                            |
+| :-------- | :------------------------------ |
+| Frontend  | Next.js 16.2, Tailwind CSS v4   |
+| Backend   | FastAPI, SQLAlchemy, PostgreSQL |
+| Auth      | JWT, OAuth2, bcrypt             |
+| Data      | FastF1, Pandas                  |
+| Prototype | Streamlit, Plotly               |
+| Infra     | Docker, Docker Compose          |
 
 ## Quick start
 
@@ -72,18 +73,22 @@ cd DreamF1
 docker compose up --build
 ```
 
-- Frontend: http://localhost:8501
+- Next.js app: http://localhost:3000
 - API docs: http://localhost:8080/docs
+- Streamlit: http://localhost:8501
 
 ### Local
 
 ```bash
 # backend
 cd backend && uv sync
-uvicorn main:app --port 8080
+uvicorn main:app --port 8080 --reload
 
-# frontend
-cd ../frontend-prototype && uv sync
+# Next.js frontend
+cd frontend && npm install && npm run dev
+
+# Streamlit prototype (optional)
+cd frontend-prototype && uv sync
 streamlit run main.py
 ```
 
@@ -106,8 +111,9 @@ ALGORITHM=HS256
 
 ## Ongoing
 
-- [ ] Next.js production frontend — replacing Streamlit with a proper React frontend
-- [ ] ML prediction model — historical F1 data → podium probabilities, DNF risk per driver and circuit, with confidence scores
+- [x] Next.js production frontend — dark glassmorphism UI, fully responsive
+- [ ] My Predictions page — full history with per-race point breakdowns
+- [ ] ML prediction model — historical F1 data → podium probabilities, DNF risk per driver and circuit
 
 ## Contributing
 
