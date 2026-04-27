@@ -32,7 +32,8 @@ function DeltaBadge({ delta }: { delta: number | null }) {
 
 export default function RaceClassification({ results }: { results: RaceResult[] }) {
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="overflow-x-auto">
+    <div className="glass-card overflow-hidden min-w-140">
       {/* Header row */}
       <div
         className="grid text-[0.6rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
@@ -72,7 +73,7 @@ export default function RaceClassification({ results }: { results: RaceResult[] 
             >
               {r.abbreviation}
               {r.fastest_lap && (
-                <span className="ml-1 text-[#c084fc] text-[0.5rem] align-super">FL</span>
+                <span className="ml-1 text-f1-purple text-[0.5rem] align-super">FL</span>
               )}
             </span>
 
@@ -98,7 +99,7 @@ export default function RaceClassification({ results }: { results: RaceResult[] 
             {/* Best lap */}
             <span
               className={`text-right text-xs font-(family-name:--font-dm-mono) ${
-                r.fastest_lap ? "text-[#c084fc]" : "text-text-secondary"
+                r.fastest_lap ? "text-f1-purple" : "text-text-secondary"
               }`}
             >
               {fmtTime(r.best_lap_time)}
@@ -116,6 +117,7 @@ export default function RaceClassification({ results }: { results: RaceResult[] 
           </div>
         )
       })}
+    </div>
     </div>
   )
 }

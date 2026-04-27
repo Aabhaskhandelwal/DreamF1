@@ -194,7 +194,7 @@ export default function PredictClient({
           <p className="text-text-muted text-xs font-(family-name:--font-dm-mono)">
             Your picks for this race are already submitted.
           </p>
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2">
             {SLOTS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
@@ -230,7 +230,7 @@ export default function PredictClient({
         <RaceHeader event={nextRace} formattedDate={formattedDate} />
         <div className="glass-card-accent p-6 space-y-4">
           <p className="section-label text-f1-green">Prediction Submitted</p>
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2">
             {SLOTS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
@@ -259,9 +259,9 @@ export default function PredictClient({
 
       {loadingExisting ? (
         <div className="glass-card p-6 animate-pulse">
-          <div className="h-4 bg-[#1a1a1a] rounded w-1/3 mb-4" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-[#1a1a1a] rounded" />)}
+          <div className="h-4 bg-border-subtle rounded w-1/3 mb-4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-border-subtle rounded" />)}
           </div>
         </div>
       ) : (
@@ -269,7 +269,7 @@ export default function PredictClient({
           <p className="section-label">Your Picks</p>
 
           {/* Required slots — P1/P2/P3/FL/Pole */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {SLOTS.map(({ key, label, placeholder }) => (
               <div key={key} className="space-y-1.5">
                 <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
@@ -305,7 +305,7 @@ export default function PredictClient({
           <button
             type="submit"
             disabled={!canSubmit || submitting}
-            className="w-full sm:w-auto px-8 py-3 bg-f1-red text-white text-xs
+            className="w-full sm:w-auto px-5 sm:px-8 py-2.5 sm:py-3 bg-f1-red text-white text-xs
                        font-(family-name:--font-dm-mono) uppercase tracking-widest
                        hover:bg-f1-red-dark transition-colors disabled:opacity-40
                        disabled:cursor-not-allowed cursor-pointer"

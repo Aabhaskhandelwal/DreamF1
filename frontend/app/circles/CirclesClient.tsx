@@ -159,10 +159,10 @@ export default function CirclesClient() {
         <div className="glass-card divide-y divide-border-subtle">
           {lbLoading
             ? [...Array(4)].map((_, i) => (
-                <div key={i} className="px-4 py-3 flex items-center gap-4 animate-pulse">
-                  <div className="w-6 h-4 bg-[#1a1a1a] rounded" />
-                  <div className="flex-1 h-4 bg-[#1a1a1a] rounded" />
-                  <div className="w-10 h-4 bg-[#1a1a1a] rounded" />
+                <div key={i} className="px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4 animate-pulse">
+                  <div className="w-6 h-4 bg-border-subtle rounded" />
+                  <div className="flex-1 h-4 bg-border-subtle rounded" />
+                  <div className="w-10 h-4 bg-border-subtle rounded" />
                 </div>
               ))
             : leaderboard && leaderboard.length > 0
@@ -200,7 +200,7 @@ export default function CirclesClient() {
 
   if (view === "create") {
     return (
-      <div className="space-y-6 max-w-md">
+      <div className="space-y-6 w-full max-w-md">
         <div className="flex items-center gap-4">
           <button
             onClick={() => { setView("list"); setCreateName(""); setCreateResult(null); setCreateError(null) }}
@@ -275,7 +275,7 @@ export default function CirclesClient() {
 
   if (view === "join") {
     return (
-      <div className="space-y-6 max-w-md">
+      <div className="space-y-6 w-full max-w-md">
         <div className="flex items-center gap-4">
           <button
             onClick={() => { setView("list"); setJoinCode(""); setJoinSuccess(false); setJoinError(null) }}
@@ -339,14 +339,14 @@ export default function CirclesClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
           <p className="section-label">My Circles</p>
           <p className="text-text-muted text-xs font-(family-name:--font-dm-mono) mt-0.5">
             Compete with friends — click a circle to see the leaderboard.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <button
             onClick={() => setView("join")}
             className="px-4 py-2 text-xs font-(family-name:--font-dm-mono) uppercase tracking-widest
@@ -368,9 +368,9 @@ export default function CirclesClient() {
       {loading ? (
         <div className="glass-card divide-y divide-border-subtle">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="px-4 py-4 flex items-center gap-4 animate-pulse">
-              <div className="flex-1 h-4 bg-[#1a1a1a] rounded" />
-              <div className="w-16 h-4 bg-[#1a1a1a] rounded" />
+            <div key={i} className="px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 animate-pulse">
+              <div className="flex-1 h-4 bg-border-subtle rounded" />
+              <div className="w-16 h-4 bg-border-subtle rounded" />
             </div>
           ))}
         </div>
@@ -389,7 +389,7 @@ export default function CirclesClient() {
             <button
               key={circle.id}
               onClick={() => openLeaderboard(circle)}
-              className="w-full px-4 py-4 flex items-center gap-4 hover:bg-border-subtle
+              className="w-full px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-border-subtle
                          transition-colors text-left cursor-pointer group"
             >
               <div className="flex-1 min-w-0">

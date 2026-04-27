@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import Image from "next/image"
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -45,8 +46,8 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">DreamF1 🏎️</CardTitle>
+        <CardHeader className="text-center flex flex-col items-center gap-3">
+          <Image src="/logo.svg" alt="DreamF1" width={96} height={32} priority />
           <CardDescription>Sign in to lock your predictions</CardDescription>
         </CardHeader>
         <CardContent>

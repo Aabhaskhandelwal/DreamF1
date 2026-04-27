@@ -64,13 +64,13 @@ function CountdownUnit({ value, label, mounted }: { value: number; label: string
   return (
     <div className="flex flex-col items-center gap-1">
       <span
-        className="font-(family-name:--font-orbitron) text-5xl md:text-6xl font-bold tabular-nums
-                   text-text-primary leading-none"
+        className="font-(family-name:--font-orbitron) text-4xl sm:text-5xl md:text-6xl font-bold
+                   tabular-nums text-text-primary leading-none"
         suppressHydrationWarning
       >
         {mounted ? String(value).padStart(2, "0") : "--"}
       </span>
-      <span className="section-label text-[0.55rem] tracking-[0.2em]">{label}</span>
+      <span className="section-label text-[0.5rem] sm:text-[0.55rem] tracking-[0.15em] sm:tracking-[0.2em]">{label}</span>
     </div>
   )
 }
@@ -104,7 +104,7 @@ export default function NextRaceCard({ event, upcomingRaces }: Props) {
       <div className="glass-card-accent overflow-hidden">
         <div className="flex flex-col lg:flex-row">
           {/* Left: race info + countdown */}
-          <div className="flex-1 p-6 md:p-8 flex flex-col justify-between gap-8">
+          <div className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-6 sm:gap-8">
             {/* Race header */}
             <div>
               <p className="section-label mb-3 text-f1-red">
@@ -117,7 +117,7 @@ export default function NextRaceCard({ event, upcomingRaces }: Props) {
                   alt={event.country}
                   className="h-6 w-auto rounded-sm"
                 />
-                <h2 className="font-(family-name:--font-orbitron) text-2xl md:text-3xl font-bold
+                <h2 className="font-(family-name:--font-orbitron) text-xl sm:text-2xl md:text-3xl font-bold
                                tracking-wide text-text-primary leading-tight">
                   {event.event_name}
                 </h2>
@@ -128,14 +128,14 @@ export default function NextRaceCard({ event, upcomingRaces }: Props) {
             </div>
 
             {/* Countdown */}
-            <div className="flex items-end gap-4 md:gap-8">
+            <div className="flex items-end gap-2 sm:gap-4 md:gap-6">
               <CountdownUnit value={time.days}    label="DAYS"    mounted={mounted} />
-              <span className="text-text-dim font-(family-name:--font-orbitron) text-4xl font-bold mb-2">:</span>
-              <CountdownUnit value={time.hours}   label="HOURS"   mounted={mounted} />
-              <span className="text-text-dim font-(family-name:--font-orbitron) text-4xl font-bold mb-2">:</span>
-              <CountdownUnit value={time.minutes} label="MINUTES" mounted={mounted} />
-              <span className="text-text-dim font-(family-name:--font-orbitron) text-4xl font-bold mb-2">:</span>
-              <CountdownUnit value={time.seconds} label="SECONDS" mounted={mounted} />
+              <span className="text-text-dim font-(family-name:--font-orbitron) text-2xl sm:text-3xl md:text-4xl font-bold mb-2">:</span>
+              <CountdownUnit value={time.hours}   label="HRS"     mounted={mounted} />
+              <span className="text-text-dim font-(family-name:--font-orbitron) text-2xl sm:text-3xl md:text-4xl font-bold mb-2">:</span>
+              <CountdownUnit value={time.minutes} label="MIN"     mounted={mounted} />
+              <span className="text-text-dim font-(family-name:--font-orbitron) text-2xl sm:text-3xl md:text-4xl font-bold mb-2">:</span>
+              <CountdownUnit value={time.seconds} label="SEC"     mounted={mounted} />
             </div>
 
             <Link

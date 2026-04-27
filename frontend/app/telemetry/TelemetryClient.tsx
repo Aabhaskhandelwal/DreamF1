@@ -148,8 +148,8 @@ export default function TelemetryClient({
         <select
           value={roundNum}
           onChange={(e) => setRoundNum(Number(e.target.value))}
-          className="glass-card px-3 py-2 text-sm font-(family-name:--font-dm-mono) text-text-secondary
-                     bg-transparent border border-[#1e1e1e] rounded cursor-pointer
+          className="w-full sm:w-auto glass-card px-3 py-2 text-xs sm:text-sm font-(family-name:--font-dm-mono)
+                     text-text-secondary bg-transparent border border-[#1e1e1e] rounded cursor-pointer
                      focus:outline-none focus:border-f1-red"
         >
           {events.map((e) => (
@@ -160,14 +160,14 @@ export default function TelemetryClient({
         </select>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[#1e1e1e]">
+      {/* Tab bar — overflow-x-auto lets it scroll on narrow screens */}
+      <div className="flex gap-0 border-b border-[#1e1e1e] overflow-x-auto">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-4 py-2 text-xs font-(family-name:--font-dm-mono) uppercase tracking-widest
-                       transition-colors border-b-2 -mb-px cursor-pointer ${
+            className={`px-3 sm:px-4 py-2 text-xs font-(family-name:--font-dm-mono) uppercase tracking-widest
+                       transition-colors border-b-2 -mb-px cursor-pointer shrink-0 ${
                          tab === key
                            ? "border-f1-red text-text-primary"
                            : "border-transparent text-text-muted hover:text-text-secondary"

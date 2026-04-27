@@ -11,13 +11,13 @@ export default function NavHeader({ active }: { active?: NavKey }) {
   ]
 
   return (
-    <header className="flex items-center justify-between">
-      <Link href="/dashboard">
-        <span className="font-(family-name:--font-f1-regular) text-xl tracking-widest text-f1-red">
+    <header className="flex items-center justify-between gap-4">
+      <Link href="/dashboard" className="shrink-0">
+        <span className="font-(family-name:--font-f1-regular) text-lg sm:text-xl tracking-widest text-f1-red">
           DREAMF1
         </span>
       </Link>
-      <nav className="flex gap-6 text-sm font-(family-name:--font-dm-mono) uppercase tracking-wider">
+      <nav className="flex gap-3 sm:gap-6 text-[0.65rem] sm:text-sm font-(family-name:--font-dm-mono) uppercase tracking-wider">
         {links.map(({ href, label, key }) => (
           <Link
             key={key}

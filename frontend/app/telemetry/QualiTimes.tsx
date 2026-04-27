@@ -15,11 +15,11 @@ function fmtQ(s: number | null): string {
 }
 
 export default function QualiTimes({ results }: { results: QualiResult[] }) {
-  // Fastest Q3 time for delta calculation
   const fastestQ3 = Math.min(...results.map((r) => r.Q3 ?? Infinity).filter((v) => v !== Infinity))
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="overflow-x-auto">
+    <div className="glass-card overflow-hidden min-w-md">
       <div
         className="grid text-[0.6rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
                    text-text-muted px-4 py-2 border-b border-[#1e1e1e]"
@@ -60,7 +60,7 @@ export default function QualiTimes({ results }: { results: QualiResult[] }) {
             >
               {r.Abbreviation}
               {isPole && (
-                <span className="ml-1 text-[#c084fc] text-[0.5rem] align-super">P</span>
+                <span className="ml-1 text-f1-purple text-[0.5rem] align-super">P</span>
               )}
             </span>
 
@@ -72,7 +72,7 @@ export default function QualiTimes({ results }: { results: QualiResult[] }) {
             </span>
             <span
               className={`text-right text-xs font-(family-name:--font-dm-mono) ${
-                isPole ? "text-[#c084fc]" : "text-text-secondary"
+                isPole ? "text-f1-purple" : "text-text-secondary"
               }`}
             >
               {fmtQ(r.Q3)}
@@ -83,6 +83,7 @@ export default function QualiTimes({ results }: { results: QualiResult[] }) {
           </div>
         )
       })}
+    </div>
     </div>
   )
 }
