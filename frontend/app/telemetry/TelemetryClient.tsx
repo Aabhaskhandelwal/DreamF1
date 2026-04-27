@@ -48,7 +48,16 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "speed", label: "Speed Trace" },
 ]
 
-export default function TelemetryClient({ events }: { events: F1Event[] }) {
+export default function TelemetryClient({
+  events: allEvents,
+  backendDown,
+}: {
+  events: F1Event[]
+  backendDown: boolean
+}) {
+  const today = new Date().toISOString().split("T")[0]
+  const events = allEvents.filter((e) => e.event_date <= today)
+
   const last = events[events.length - 1]
   const [roundNum, setRoundNum] = useState<number>(last?.round_number ?? 0)
   const [tab, setTab] = useState<Tab>("race")
@@ -96,12 +105,16 @@ export default function TelemetryClient({ events }: { events: F1Event[] }) {
   // Driver order from race summary for consistent ordering in tyre chart
   const driverOrder = summary?.results.map((r) => r.abbreviation) ?? []
 
-  if (events.length === 0) {
+  if (backendDown || events.length === 0) {
     return (
-      <div className="glass-card p-8 text-center">
-        <p className="section-label">No completed races yet</p>
-        <p className="text-text-muted text-sm mt-2 font-(family-name:--font-dm-mono)">
-          Telemetry will be available after the first race of the season.
+      <div className="glass-card p-8 space-y-2">
+        <p className="section-label text-f1-red">
+          {backendDown ? "Backend unavailable" : "No past races found"}
+        </p>
+        <p className="text-text-muted text-sm font-(family-name:--font-dm-mono)">
+          {backendDown
+            ? "Start the FastAPI server on port 8080 — cd backend && uvicorn main:app --reload"
+            : "No races with a past event date were returned from the schedule API."}
         </p>
       </div>
     )
