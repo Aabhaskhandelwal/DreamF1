@@ -1,10 +1,16 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
+
+RUN pip install uv
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv sync --frozen
+COPY pyproject.toml .
+RUN uv pip install --system --no-cache .
 
-COPY . .
+COPY app/ ./app/
+COPY main.py .
+RUN mkdir -p cache
 
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+EXPOSE 8080
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -30,8 +30,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ff1cache:/app/cache
 
-  frontend:
+  streamlit:
     build: ./frontend-prototype
     ports:
       - "8501:8501"
@@ -40,7 +42,17 @@ services:
     depends_on:
       - backend
 
+  nextjs:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    depends_on:
+      - backend
+
 
 volumes:
   pgdata:
+  ff1cache:
 
