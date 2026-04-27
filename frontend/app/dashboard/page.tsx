@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   // so unscored past races would incorrectly appear as "upcoming" otherwise.
   const nextRace = events.find((e) => e.event_date >= today) ?? null
   const upcomingAfterNext = events.filter((e) => e.event_date > (nextRace?.event_date ?? today)).slice(0, 4)
-  const completedCount = events.filter((e) => e.is_completed).length
+  const completedCount = events.filter((e) => e.event_date < today).length
   const remainingCount = events.filter((e) => e.event_date >= today).length
 
   return (

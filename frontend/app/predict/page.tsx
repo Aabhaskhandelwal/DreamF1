@@ -17,7 +17,8 @@ async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean 
 
 export default async function PredictPage() {
   const { events, backendDown } = await getSchedule()
-  const nextRace = events.find((e) => !e.is_completed) ?? null
+  const today = new Date().toISOString().split("T")[0]
+  const nextRace = events.find((e) => e.event_date >= today) ?? null
 
   return (
     <div className="min-h-screen px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
