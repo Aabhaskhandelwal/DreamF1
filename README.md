@@ -16,9 +16,11 @@
 
 ## UI
 
-<img src="frontend/public/dashboard.png" height="250"/>
-<img src="frontend/public/telemetry.png" height="250"/>
-<img src="frontend/public/predict.png" height="250"/>
+<p align="center">
+  <img src="frontend/public/dashboard.png" width="32%" />
+  <img src="frontend/public/telemetry.png" width="32%" />
+  <img src="frontend/public/predict.png" width="32%" />
+</p>
 
 ## How it works
 
