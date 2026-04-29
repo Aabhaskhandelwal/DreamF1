@@ -11,8 +11,9 @@ import PositionChart, { type PositionData } from "./PositionChart"
 import GapChart, { type GapData } from "./GapChart"
 import LapTimesChart, { type LapTimesData } from "./LapTimesChart"
 import SectorTimes, { type SectorData } from "./SectorTimes"
+import CircuitMap, { type MapData } from "./CircuitMap"
 
-type Tab = "race" | "laptimes" | "positions" | "gaps" | "tyres" | "quali" | "sectors" | "speed"
+type Tab = "race" | "laptimes" | "positions" | "gaps" | "tyres" | "quali" | "sectors" | "speed" | "map"
 
 interface RaceSummary { session: string; results: RaceResult[] }
 interface TyreData { session: string; stints: TyreStint[] }
@@ -54,6 +55,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "quali", label: "Qualifying" },
   { key: "sectors", label: "Sectors" },
   { key: "speed", label: "Speed Trace" },
+  { key: "map", label: "Circuit" },
 ]
 
 export default function TelemetryClient({
@@ -79,6 +81,7 @@ export default function TelemetryClient({
   const [gaps, setGaps] = useState<GapData | null>(null)
   const [lapTimes, setLapTimes] = useState<LapTimesData | null>(null)
   const [sectors, setSectors] = useState<SectorData | null>(null)
+  const [mapData, setMapData] = useState<MapData | null>(null)
 
   const selectedEvent = events.find((e) => e.round_number === roundNum)
 
@@ -87,7 +90,7 @@ export default function TelemetryClient({
     if (!roundNum) return
     setLoading(true)
     setSummary(null); setTyres(null); setQuali(null)
-    setSpeed(null); setPositions(null); setGaps(null); setLapTimes(null); setSectors(null)
+    setSpeed(null); setPositions(null); setGaps(null); setLapTimes(null); setSectors(null); setMapData(null)
 
     const base = `http://localhost:8080/api/telemetry/2026/${roundNum}`
     const get = (path: string) =>
@@ -129,6 +132,12 @@ export default function TelemetryClient({
     fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/speed`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSpeed)
   }, [tab, roundNum, speed])
+
+  useEffect(() => {
+    if (tab !== "map" || mapData !== null || !roundNum) return
+    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/map`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setMapData)
+  }, [tab, roundNum, mapData])
 
   const trackImage = selectedEvent
     ? getTrackImage(selectedEvent.country, selectedEvent.event_name)
@@ -256,6 +265,12 @@ export default function TelemetryClient({
           {tab === "speed" && (
             speed
               ? <SpeedTrace drivers={speed.drivers} />
+              : <Spinner />
+          )}
+
+          {tab === "map" && (
+            mapData
+              ? <CircuitMap data={mapData} />
               : <Spinner />
           )}
         </>

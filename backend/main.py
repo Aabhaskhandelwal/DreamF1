@@ -573,3 +573,29 @@ def get_sector_times(year: int, round_num: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/map")
+def get_circuit_map(year: int, round_num: int):
+    """Circuit outline from fastest lap GPS coordinates — X/Y in metres."""
+    try:
+        race = ff1.get_session(year, round_num, 'R')
+        race.load(laps=True, telemetry=True, weather=False)
+
+        lap = race.laps.pick_fastest()
+        tel = lap.get_telemetry()[['X', 'Y']].dropna()
+
+        # Downsample to ~600 points — enough for a smooth outline
+        step = max(1, len(tel) // 600)
+        tel = tel.iloc[::step]
+
+        return _clean({
+            "session": race.event['EventName'],
+            "x": tel['X'].round(0).tolist(),
+            "y": tel['Y'].round(0).tolist(),
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")

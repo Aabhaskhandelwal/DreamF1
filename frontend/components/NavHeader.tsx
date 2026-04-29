@@ -5,12 +5,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
-type NavKey = "dashboard" | "telemetry" | "predict" | "circles"
+type NavKey = "dashboard" | "telemetry" | "predict" | "predictions" | "circles"
 
 const LINKS: { href: string; label: string; key: NavKey }[] = [
   { href: "/dashboard", label: "Dashboard", key: "dashboard" },
   { href: "/telemetry", label: "Telemetry", key: "telemetry" },
   { href: "/predict", label: "Predict", key: "predict" },
+  { href: "/predictions", label: "My Picks", key: "predictions" },
   { href: "/circles", label: "Circles", key: "circles" },
 ]
 
