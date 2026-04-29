@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 type NavKey = "dashboard" | "telemetry" | "predict" | "circles"
@@ -32,9 +33,14 @@ export default function NavHeader({ active }: { active?: NavKey }) {
   return (
     <header className="flex items-center justify-between gap-4">
       <Link href="/dashboard" className="shrink-0">
-        <span className="font-(family-name:--font-orbitron) text-sm sm:text-base font-black text-f1-red tracking-widest">
-          DREAMF1
-        </span>
+        <Image
+          src="/logo.svg"
+          alt="DreamF1"
+          width={80}
+          height={27}
+          priority
+          className="w-14 sm:w-20 h-auto"
+        />
       </Link>
 
       <nav className="flex items-center gap-3 sm:gap-6 text-[0.65rem] sm:text-sm font-(family-name:--font-dm-mono) uppercase tracking-wider">
