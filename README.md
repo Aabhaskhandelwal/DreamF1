@@ -1,6 +1,8 @@
 <div align="center">
 
-# DreamF1 🏎️
+<p align="center">
+  <img src="frontend/public/DreamF1Readme.png" height="150"/>
+</p>
 
 **Compete with friends on F1 race outcomes. Pick your podium, pole, fastest lap, and DNF before each race — earn points when results come in.**
 
