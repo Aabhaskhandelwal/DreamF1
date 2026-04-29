@@ -44,9 +44,11 @@ export default function CirclesClient() {
   const [activeCircle, setActiveCircle] = useState<Circle | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null)
   const [lbLoading, setLbLoading] = useState(false)
+  const [currentUser, setCurrentUser] = useState<string | null>(null)
 
   useEffect(() => {
     setToken(localStorage.getItem("token"))
+    setCurrentUser(localStorage.getItem("username"))
   }, [])
 
   useEffect(() => {
@@ -138,8 +140,20 @@ export default function CirclesClient() {
   // ── Leaderboard view ─────────────────────────────────────────────
 
   if (view === "leaderboard" && activeCircle) {
+    const maxPts = leaderboard ? Math.max(...leaderboard.map((e) => e.total_points), 1) : 1
+    const myRank = leaderboard?.find((e) => e.username === currentUser)?.rank ?? null
+    const top3 = leaderboard?.slice(0, 3) ?? []
+    const rest = leaderboard?.slice(3) ?? []
+
+    // Podium order: P2 left, P1 center, P3 right
+    const podiumOrder = [top3[1], top3[0], top3[2]]
+    const podiumHeights = ["h-20", "h-28", "h-14"]
+    const podiumColors = ["#C0C0C0", "#FFD700", "#CD7F32"]
+    const podiumLabels = ["2", "1", "3"]
+
     return (
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => { setView("list"); setActiveCircle(null) }}
@@ -149,49 +163,122 @@ export default function CirclesClient() {
             ← Back
           </button>
           <div>
-            <p className="section-label">Circle Leaderboard</p>
+            <p className="section-label">Leaderboard</p>
             <h2 className="font-(family-name:--font-orbitron) text-xl font-bold text-text-primary">
               {activeCircle.name}
             </h2>
           </div>
+          {myRank && (
+            <div className="ml-auto text-right">
+              <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-muted uppercase tracking-widest">Your Rank</p>
+              <p className="font-(family-name:--font-orbitron) text-2xl font-black"
+                style={{ color: myRank === 1 ? "#FFD700" : myRank === 2 ? "#C0C0C0" : myRank === 3 ? "#CD7F32" : "#f3f3f3" }}>
+                P{myRank}
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="glass-card divide-y divide-border-subtle">
-          {lbLoading
-            ? [...Array(4)].map((_, i) => (
-                <div key={i} className="px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4 animate-pulse">
-                  <div className="w-6 h-4 bg-border-subtle rounded" />
-                  <div className="flex-1 h-4 bg-border-subtle rounded" />
-                  <div className="w-10 h-4 bg-border-subtle rounded" />
+        {lbLoading ? (
+          <div className="glass-card p-8 space-y-3 animate-pulse">
+            {[...Array(5)].map((_, i) => <div key={i} className="h-8 bg-border-subtle rounded" />)}
+          </div>
+        ) : leaderboard && leaderboard.length > 0 ? (
+          <>
+            {/* Podium — only if 3+ members */}
+            {top3.length >= 2 && (
+              <div className="glass-card p-6 pb-0 overflow-hidden">
+                <div className="flex items-end justify-center gap-1">
+                  {podiumOrder.map((entry, i) => {
+                    if (!entry) return <div key={i} className="flex-1" />
+                    const color = podiumColors[i]
+                    const isMe = entry.username === currentUser
+                    return (
+                      <div key={entry.username} className="flex-1 flex flex-col items-center gap-2">
+                        {/* Name + points above the block */}
+                        <div className="text-center space-y-0.5 pb-2">
+                          <p
+                            className="text-xs font-(family-name:--font-dm-mono) truncate max-w-24"
+                            style={{ color: isMe ? "#ED1131" : color }}
+                          >
+                            {isMe ? "▶ " : ""}{entry.username}
+                          </p>
+                          <p className="font-(family-name:--font-orbitron) text-sm font-bold text-text-primary">
+                            {entry.total_points}
+                            <span className="text-[0.55rem] text-text-dim font-(family-name:--font-dm-mono) ml-0.5">pts</span>
+                          </p>
+                        </div>
+                        {/* Podium block */}
+                        <div
+                          className={`w-full ${podiumHeights[i]} flex items-center justify-center rounded-t-sm`}
+                          style={{ backgroundColor: `${color}18`, borderTop: `2px solid ${color}66` }}
+                        >
+                          <span
+                            className="font-(family-name:--font-orbitron) text-2xl font-black opacity-40"
+                            style={{ color }}
+                          >
+                            {podiumLabels[i]}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))
-            : leaderboard && leaderboard.length > 0
-              ? leaderboard.map((entry) => (
-                  <div key={entry.username} className="px-4 py-3 flex items-center gap-4">
+              </div>
+            )}
+
+            {/* Full ranked list */}
+            <div className="glass-card divide-y divide-[#111]">
+              {leaderboard.map((entry) => {
+                const isMe = entry.username === currentUser
+                const barPct = maxPts > 0 ? (entry.total_points / maxPts) * 100 : 0
+                const rankColor =
+                  entry.rank === 1 ? "#FFD700"
+                  : entry.rank === 2 ? "#C0C0C0"
+                  : entry.rank === 3 ? "#CD7F32"
+                  : "#333"
+
+                return (
+                  <div
+                    key={entry.username}
+                    className="relative px-4 py-3 flex items-center gap-4 transition-colors"
+                    style={isMe ? { borderLeft: "2px solid #ED1131", backgroundColor: "#ED113108" } : {}}
+                  >
+                    {/* Progress bar behind the row */}
+                    <div
+                      className="absolute inset-y-0 left-0 opacity-[0.04] pointer-events-none"
+                      style={{ width: `${barPct}%`, backgroundColor: isMe ? "#ED1131" : "#ffffff" }}
+                    />
+
                     <span
-                      className="font-(family-name:--font-orbitron) text-sm font-bold w-6 text-right shrink-0"
-                      style={{
-                        color: entry.rank === 1 ? "#FFD700" : entry.rank === 2 ? "#C0C0C0" : entry.rank === 3 ? "#CD7F32" : "#444",
-                      }}
+                      className="font-(family-name:--font-orbitron) text-sm font-bold w-6 text-right shrink-0 z-10"
+                      style={{ color: rankColor }}
                     >
                       {entry.rank}
                     </span>
-                    <span className="flex-1 text-text-secondary text-sm font-(family-name:--font-dm-mono)">
+
+                    <span
+                      className="flex-1 text-sm font-(family-name:--font-dm-mono) z-10 truncate"
+                      style={{ color: isMe ? "#ED1131" : "#e0e0e0" }}
+                    >
                       {entry.username}
+                      {isMe && <span className="ml-2 text-[0.55rem] text-f1-red opacity-70 uppercase tracking-widest">you</span>}
                     </span>
-                    <span className="font-(family-name:--font-orbitron) text-sm font-bold text-f1-red">
+
+                    <span className="font-(family-name:--font-orbitron) text-sm font-bold text-text-primary z-10 shrink-0">
                       {entry.total_points}
-                      <span className="text-text-dim text-xs font-(family-name:--font-dm-mono) ml-1">pts</span>
+                      <span className="text-text-dim text-[0.6rem] font-(family-name:--font-dm-mono) ml-1">pts</span>
                     </span>
                   </div>
-                ))
-              : (
-                <div className="px-4 py-8 text-center text-text-muted text-sm font-(family-name:--font-dm-mono)">
-                  No scored predictions yet.
-                </div>
-              )
-          }
-        </div>
+                )
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="glass-card p-10 text-center">
+            <p className="text-text-muted text-sm font-(family-name:--font-dm-mono)">No scored predictions yet.</p>
+          </div>
+        )}
       </div>
     )
   }
