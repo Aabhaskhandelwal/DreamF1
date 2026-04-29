@@ -7,8 +7,12 @@ import RaceClassification, { type RaceResult } from "./RaceClassification"
 import TyreStrategy, { type TyreStint } from "./TyreStrategy"
 import QualiTimes, { type QualiResult } from "./QualiTimes"
 import SpeedTrace from "./SpeedTrace"
+import PositionChart, { type PositionData } from "./PositionChart"
+import GapChart, { type GapData } from "./GapChart"
+import LapTimesChart, { type LapTimesData } from "./LapTimesChart"
+import SectorTimes, { type SectorData } from "./SectorTimes"
 
-type Tab = "race" | "tyres" | "quali" | "speed"
+type Tab = "race" | "laptimes" | "positions" | "gaps" | "tyres" | "quali" | "sectors" | "speed"
 
 interface RaceSummary { session: string; results: RaceResult[] }
 interface TyreData { session: string; stints: TyreStint[] }
@@ -43,8 +47,12 @@ function getTrackImage(country: string, eventName: string): string | null {
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "race", label: "Race" },
+  { key: "laptimes", label: "Lap Times" },
+  { key: "positions", label: "Positions" },
+  { key: "gaps", label: "Gaps" },
   { key: "tyres", label: "Tyres" },
   { key: "quali", label: "Qualifying" },
+  { key: "sectors", label: "Sectors" },
   { key: "speed", label: "Speed Trace" },
 ]
 
@@ -62,47 +70,70 @@ export default function TelemetryClient({
   const [roundNum, setRoundNum] = useState<number>(last?.round_number ?? 0)
   const [tab, setTab] = useState<Tab>("race")
   const [loading, setLoading] = useState(false)
+
   const [summary, setSummary] = useState<RaceSummary | null>(null)
   const [tyres, setTyres] = useState<TyreData | null>(null)
   const [quali, setQuali] = useState<QualiData | null>(null)
   const [speed, setSpeed] = useState<SpeedData | null>(null)
+  const [positions, setPositions] = useState<PositionData | null>(null)
+  const [gaps, setGaps] = useState<GapData | null>(null)
+  const [lapTimes, setLapTimes] = useState<LapTimesData | null>(null)
+  const [sectors, setSectors] = useState<SectorData | null>(null)
 
   const selectedEvent = events.find((e) => e.round_number === roundNum)
 
+  // Eager fetch on round change: race, tyres, quali
   useEffect(() => {
     if (!roundNum) return
     setLoading(true)
-    setSummary(null); setTyres(null); setQuali(null); setSpeed(null)
+    setSummary(null); setTyres(null); setQuali(null)
+    setSpeed(null); setPositions(null); setGaps(null); setLapTimes(null); setSectors(null)
 
     const base = `http://localhost:8080/api/telemetry/2026/${roundNum}`
     const get = (path: string) =>
-      fetch(`${base}/${path}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null)
+      fetch(`${base}/${path}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
 
-    // Fetch race + tyres + quali immediately; speed is heavy, fetch only when tab is "speed"
     Promise.all([get("race_summary"), get("tyres"), get("quali")]).then(([s, t, q]) => {
-      setSummary(s)
-      setTyres(t)
-      setQuali(q)
+      setSummary(s); setTyres(t); setQuali(q)
       setLoading(false)
     })
   }, [roundNum])
 
-  // Lazy-load speed trace only when that tab is selected
+  // Lazy loaders — fire only on first visit to that tab
+  useEffect(() => {
+    if (tab !== "laptimes" || lapTimes !== null || !roundNum) return
+    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/laptimes`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setLapTimes)
+  }, [tab, roundNum, lapTimes])
+
+  useEffect(() => {
+    if (tab !== "positions" || positions !== null || !roundNum) return
+    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/positions`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setPositions)
+  }, [tab, roundNum, positions])
+
+  useEffect(() => {
+    if (tab !== "gaps" || gaps !== null || !roundNum) return
+    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/gaps`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setGaps)
+  }, [tab, roundNum, gaps])
+
+  useEffect(() => {
+    if (tab !== "sectors" || sectors !== null || !roundNum) return
+    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/sector_times`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSectors)
+  }, [tab, roundNum, sectors])
+
   useEffect(() => {
     if (tab !== "speed" || speed !== null || !roundNum) return
     fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/speed`)
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null)
-      .then((data) => setSpeed(data))
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSpeed)
   }, [tab, roundNum, speed])
 
   const trackImage = selectedEvent
     ? getTrackImage(selectedEvent.country, selectedEvent.event_name)
     : null
 
-  // Driver order from race summary for consistent ordering in tyre chart
   const driverOrder = summary?.results.map((r) => r.abbreviation) ?? []
 
   if (backendDown || events.length === 0) {
@@ -125,15 +156,9 @@ export default function TelemetryClient({
       {/* Race selector + track header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-4">
-          {/* Track map thumbnail */}
           {trackImage && (
             <div className="relative w-20 h-12 shrink-0">
-              <Image
-                src={trackImage}
-                alt="track"
-                fill
-                className="object-contain opacity-60"
-              />
+              <Image src={trackImage} alt="track" fill className="object-contain opacity-60" />
             </div>
           )}
           <div>
@@ -144,10 +169,9 @@ export default function TelemetryClient({
           </div>
         </div>
 
-        {/* Round picker */}
         <select
           value={roundNum}
-          onChange={(e) => setRoundNum(Number(e.target.value))}
+          onChange={(e) => { setRoundNum(Number(e.target.value)); setTab("race") }}
           className="w-full sm:w-auto glass-card px-3 py-2 text-xs sm:text-sm font-(family-name:--font-dm-mono)
                      text-text-secondary bg-transparent border border-[#1e1e1e] rounded cursor-pointer
                      focus:outline-none focus:border-f1-red"
@@ -160,7 +184,7 @@ export default function TelemetryClient({
         </select>
       </div>
 
-      {/* Tab bar — overflow-x-auto lets it scroll on narrow screens */}
+      {/* Tab bar */}
       <div className="flex gap-0 border-b border-[#1e1e1e] overflow-x-auto">
         {TABS.map(({ key, label }) => (
           <button
@@ -182,7 +206,7 @@ export default function TelemetryClient({
       {loading ? (
         <div className="glass-card p-8 space-y-3 animate-pulse">
           {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-8 bg-[#1a1a1a] rounded" />
+            <div key={i} className="h-8 bg-border-subtle rounded" />
           ))}
         </div>
       ) : (
@@ -191,6 +215,24 @@ export default function TelemetryClient({
             summary
               ? <RaceClassification results={summary.results} />
               : <EmptyState message="Race data not available for this round." />
+          )}
+
+          {tab === "laptimes" && (
+            lapTimes
+              ? <LapTimesChart data={lapTimes} />
+              : <Spinner />
+          )}
+
+          {tab === "positions" && (
+            positions
+              ? <PositionChart data={positions} />
+              : <Spinner />
+          )}
+
+          {tab === "gaps" && (
+            gaps
+              ? <GapChart data={gaps} />
+              : <Spinner />
           )}
 
           {tab === "tyres" && (
@@ -205,14 +247,16 @@ export default function TelemetryClient({
               : <EmptyState message="Qualifying data not available for this round." />
           )}
 
+          {tab === "sectors" && (
+            sectors
+              ? <SectorTimes data={sectors} />
+              : <Spinner />
+          )}
+
           {tab === "speed" && (
             speed
               ? <SpeedTrace drivers={speed.drivers} />
-              : <div className="glass-card p-8 text-center">
-                  <p className="text-text-muted text-sm font-(family-name:--font-dm-mono)">
-                    Loading speed trace data…
-                  </p>
-                </div>
+              : <Spinner />
           )}
         </>
       )}
@@ -224,6 +268,16 @@ function EmptyState({ message }: { message: string }) {
   return (
     <div className="glass-card p-8 text-center">
       <p className="text-text-muted text-sm font-(family-name:--font-dm-mono)">{message}</p>
+    </div>
+  )
+}
+
+function Spinner() {
+  return (
+    <div className="glass-card p-8 space-y-3 animate-pulse">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="h-8 bg-border-subtle rounded" />
+      ))}
     </div>
   )
 }
