@@ -1,9 +1,12 @@
 import secrets
 import math
+import threading
+from typing import Any
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select, func
 from contextlib import asynccontextmanager
-from app.database import create_db_and_tables, get_session
+from app.database import create_db_and_tables, get_session, engine
+from sqlalchemy import text
 from app.models import User, UserCreate, Prediction, PredictionCreate, Event, GroupCreate, GroupMember, Group, GroupJoin
 from app.auth import get_password_hash, verify_password, create_access_token, get_current_user
 import fastf1 as ff1
@@ -25,9 +28,41 @@ def _clean(obj):
 
 ff1.Cache.enable_cache("./cache")
 
+# In-memory session cache — avoids re-parsing Parquet files on every request.
+# Key: (year, round_num, session_type, telemetry). Double-checked locking prevents
+# duplicate loads when concurrent requests race for the same session.
+_session_cache: dict[tuple, Any] = {}
+_session_locks: dict[tuple, threading.Lock] = {}
+_cache_registry_lock = threading.Lock()
+
+
+def _load_session(year: int, round_num: int, session_type: str, telemetry: bool = False) -> Any:
+    key = (year, round_num, session_type, telemetry)
+    if key in _session_cache:
+        return _session_cache[key]
+    with _cache_registry_lock:
+        if key not in _session_locks:
+            _session_locks[key] = threading.Lock()
+        lock = _session_locks[key]
+    with lock:
+        if key in _session_cache:
+            return _session_cache[key]
+        session = ff1.get_session(year, round_num, session_type)
+        session.load(laps=True, telemetry=telemetry, weather=False)
+        _session_cache[key] = session
+    return _session_cache[key]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    with engine.begin() as conn:
+        for col, typ in [
+            ("fourth_place", "VARCHAR"),
+            ("fifth_place", "VARCHAR"),
+            ("safety_car", "BOOLEAN"),
+        ]:
+            conn.execute(text(f"ALTER TABLE prediction ADD COLUMN IF NOT EXISTS {col} {typ}"))
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -132,9 +167,12 @@ def submit_prediction(
         first_place=prediction_data.first_place,
         second_place=prediction_data.second_place,
         third_place=prediction_data.third_place,
+        fourth_place=prediction_data.fourth_place,
+        fifth_place=prediction_data.fifth_place,
         fastest_lap=prediction_data.fastest_lap,
         dnf_driver=prediction_data.dnf_driver,
-        pole_position=prediction_data.pole_position
+        pole_position=prediction_data.pole_position,
+        safety_car=prediction_data.safety_car,
     )
     session.add(new_prediction)
     session.commit()
@@ -170,9 +208,13 @@ def score_race(event_id: int, session: Session = Depends(get_session)):
     actual_p1 = results.iloc[0]['Abbreviation']
     actual_p2 = results.iloc[1]['Abbreviation']
     actual_p3 = results.iloc[2]['Abbreviation']
+    actual_p4 = results.iloc[3]['Abbreviation'] if len(results) > 3 else None
+    actual_p5 = results.iloc[4]['Abbreviation'] if len(results) > 4 else None
     actual_fastest = race_session.laps.pick_fastest()['Driver']
     actual_pole = quali_session.results.iloc[0]['Abbreviation']
     actual_dnfs = results[~results['Status'].str.contains(r'Finished|\+', regex=True)]['Abbreviation'].tolist()
+    track_statuses = race_session.laps['TrackStatus'].dropna()
+    actual_safety_car = bool(track_statuses.str.contains('4').any())
 
     predictions = session.exec(select(Prediction).where(Prediction.event_id == event_id)).all()
     for pred in predictions:
@@ -180,9 +222,12 @@ def score_race(event_id: int, session: Session = Depends(get_session)):
         if pred.first_place == actual_p1: points += 10
         if pred.second_place == actual_p2: points += 10
         if pred.third_place == actual_p3: points += 10
+        if pred.fourth_place and pred.fourth_place == actual_p4: points += 8
+        if pred.fifth_place and pred.fifth_place == actual_p5: points += 6
         if pred.fastest_lap == actual_fastest: points += 5
         if pred.pole_position == actual_pole: points += 5
         if pred.dnf_driver and pred.dnf_driver in actual_dnfs: points += 5
+        if pred.safety_car is not None and pred.safety_car == actual_safety_car: points += 5
 
         pred.points_earned = points
         session.add(pred)
@@ -272,8 +317,7 @@ def get_group_leaderboard(group_id: int, current_user: User = Depends(get_curren
 @app.get("/api/telemetry/{year}/{round_num}/speed")
 def get_speed_trace(year: int, round_num: int):
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(telemetry=True, weather=False)
+        race = _load_session(year, round_num, 'R', telemetry=True)
     except Exception:
         raise HTTPException(status_code=404, detail="Session data not available yet")
 
@@ -303,8 +347,7 @@ def get_speed_trace(year: int, round_num: int):
 @app.get("/api/telemetry/{year}/{round_num}/tyres")
 def get_tyre_strategy(year: int, round_num: int):
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(telemetry=False, weather=False)
+        race = _load_session(year, round_num, 'R')
     except Exception:
         raise HTTPException(status_code=404, detail="Session data not available yet")
 
@@ -333,8 +376,7 @@ def get_tyre_strategy(year: int, round_num: int):
 @app.get("/api/telemetry/{year}/{round_num}/quali")
 def get_quali_laptimes(year: int, round_num: int):
     try:
-        quali = ff1.get_session(year, round_num, 'Q')
-        quali.load(laps=True, telemetry=False, weather=False)
+        quali = _load_session(year, round_num, 'Q')
 
         if quali.results is None or quali.results.empty:
             raise HTTPException(status_code=404, detail="No qualifying results available for this round")
@@ -363,8 +405,7 @@ def get_quali_laptimes(year: int, round_num: int):
 def get_lap_times(year: int, round_num: int):
     """Lap time evolution for top 5 finishers — shows pace over the race."""
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(laps=True, telemetry=False, weather=False)
+        race = _load_session(year, round_num, 'R')
 
         if race.results is None or race.results.empty:
             raise HTTPException(status_code=404, detail="No race results available")
@@ -396,8 +437,7 @@ def get_lap_times(year: int, round_num: int):
 def get_race_positions(year: int, round_num: int):
     """Position of each driver lap-by-lap throughout the race."""
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(laps=True, telemetry=False, weather=False)
+        race = _load_session(year, round_num, 'R')
 
         if race.results is None or race.results.empty:
             raise HTTPException(status_code=404, detail="No race results available")
@@ -426,8 +466,7 @@ def get_race_positions(year: int, round_num: int):
 def get_gap_to_leader(year: int, round_num: int):
     """Gap to race leader per lap for top 5 drivers."""
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(laps=True, telemetry=False, weather=False)
+        race = _load_session(year, round_num, 'R')
 
         if race.results is None or race.results.empty:
             raise HTTPException(status_code=404, detail="No race results available")
@@ -470,8 +509,7 @@ def get_gap_to_leader(year: int, round_num: int):
 def get_race_summary(year: int, round_num: int):
     """Full classification for all drivers — avg pace, positions gained, DNF, fastest lap."""
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(laps=True, telemetry=False, weather=False)
+        race = _load_session(year, round_num, 'R')
 
         if race.results is None or race.results.empty:
             raise HTTPException(status_code=404, detail="No race results available")
@@ -534,8 +572,7 @@ def get_race_summary(year: int, round_num: int):
 def get_sector_times(year: int, round_num: int):
     """Best sector times per driver from qualifying — for pole prediction."""
     try:
-        quali = ff1.get_session(year, round_num, 'Q')
-        quali.load(laps=True, telemetry=False, weather=False)
+        quali = _load_session(year, round_num, 'Q')
 
         if quali.results is None or quali.results.empty:
             raise HTTPException(status_code=404, detail="No qualifying results available")
@@ -579,8 +616,7 @@ def get_sector_times(year: int, round_num: int):
 def get_circuit_map(year: int, round_num: int):
     """Circuit outline from fastest lap GPS coordinates — X/Y in metres."""
     try:
-        race = ff1.get_session(year, round_num, 'R')
-        race.load(laps=True, telemetry=True, weather=False)
+        race = _load_session(year, round_num, 'R', telemetry=True)
 
         lap = race.laps.pick_fastest()
         tel = lap.get_telemetry()[['X', 'Y']].dropna()

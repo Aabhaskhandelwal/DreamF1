@@ -12,9 +12,12 @@ interface Prediction {
   first_place: string
   second_place: string
   third_place: string
+  fourth_place: string | null
+  fifth_place: string | null
   fastest_lap: string | null
   dnf_driver: string | null
   pole_position: string | null
+  safety_car: boolean | null
   points_earned: number
 }
 
@@ -24,10 +27,12 @@ interface RaceCard {
   status: "scored" | "pending" | "upcoming"
 }
 
-const PICK_LABELS: { key: keyof Prediction; label: string }[] = [
+const DRIVER_PICK_LABELS: { key: keyof Prediction; label: string }[] = [
   { key: "first_place", label: "P1" },
   { key: "second_place", label: "P2" },
   { key: "third_place", label: "P3" },
+  { key: "fourth_place", label: "P4" },
+  { key: "fifth_place", label: "P5" },
   { key: "pole_position", label: "Pole" },
   { key: "fastest_lap", label: "FL" },
   { key: "dnf_driver", label: "DNF" },
@@ -97,7 +102,7 @@ export default function PredictionsPage() {
 
   const totalPoints = cards?.reduce((s, c) => s + c.prediction.points_earned, 0) ?? 0
   const scoredCount = cards?.filter((c) => c.status === "scored").length ?? 0
-  const maxPossible = scoredCount * 45
+  const maxPossible = scoredCount * 64
 
   return (
     <div className="min-h-screen px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
@@ -193,13 +198,23 @@ export default function PredictionsPage() {
 
                   {/* Picks row */}
                   <div className="flex items-center gap-3 sm:gap-5 px-4 pb-4 flex-wrap">
-                    {PICK_LABELS.map(({ key, label }) => (
+                    {DRIVER_PICK_LABELS.map(({ key, label }) => (
                       <DriverChip
                         key={key}
                         code={p[key] as string | null}
                         label={label}
                       />
                     ))}
+                    {/* Safety Car chip */}
+                    {p.safety_car !== null && (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[0.5rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">SC</span>
+                        <span className="font-(family-name:--font-dm-mono) text-xs px-1.5 py-0.5 rounded-sm"
+                          style={{ color: "#aaaaaa", backgroundColor: "#aaaaaa18", border: "1px solid #aaaaaa33" }}>
+                          {p.safety_car ? "Yes" : "No"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

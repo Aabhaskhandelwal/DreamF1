@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Orbitron, DM_Mono, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
+import Footer from "@/components/Footer";
 import "./globals.css";
 
 const f1Regular = localFont({
@@ -44,6 +45,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-[#0a0a0a] text-[#f3f3f3] antialiased">
         {children}
+        <Footer />
       </body>
     </html>
   );

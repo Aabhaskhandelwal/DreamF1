@@ -7,37 +7,59 @@ import DriverSelect from "./DriverSelect"
 import type { F1Event } from "../dashboard/page"
 
 interface PredictionSlot {
-  key: "first_place" | "second_place" | "third_place" | "fastest_lap" | "pole_position"
+  key: "pole_position" | "first_place" | "second_place" | "third_place" | "fourth_place" | "fifth_place" | "fastest_lap" | "dnf_driver"
   label: string
   placeholder: string
 }
 
-const SLOTS: PredictionSlot[] = [
-  { key: "first_place",    label: "P1 — Race Winner",   placeholder: "Winner" },
-  { key: "second_place",   label: "P2 — Second Place",  placeholder: "P2" },
-  { key: "third_place",    label: "P3 — Third Place",   placeholder: "P3" },
-  { key: "fastest_lap",    label: "Fastest Lap",        placeholder: "Fastest Lap" },
-  { key: "pole_position",  label: "Pole Position",      placeholder: "Pole" },
+const DRIVER_SLOTS: PredictionSlot[] = [
+  { key: "pole_position", label: "Pole Position",     placeholder: "Pole" },
+  { key: "first_place",   label: "P1 — Race Winner",  placeholder: "Winner" },
+  { key: "second_place",  label: "P2 — Second Place", placeholder: "P2" },
+  { key: "third_place",   label: "P3 — Third Place",  placeholder: "P3" },
+  { key: "fourth_place",  label: "P4 — Fourth Place", placeholder: "P4" },
+  { key: "fifth_place",   label: "P5 — Fifth Place",  placeholder: "P5" },
+  { key: "fastest_lap",   label: "Fastest Lap",       placeholder: "Fastest Lap" },
+  { key: "dnf_driver",    label: "DNF Driver",        placeholder: "DNF" },
 ]
 
+// Position slots that must not share a driver with each other
+const POSITION_KEYS = new Set<keyof FormState>([
+  "pole_position", "first_place", "second_place", "third_place",
+  "fourth_place", "fifth_place", "fastest_lap",
+])
+
 interface FormState {
+  pole_position: string | null
   first_place: string | null
   second_place: string | null
   third_place: string | null
+  fourth_place: string | null
+  fifth_place: string | null
   fastest_lap: string | null
-  pole_position: string | null
   dnf_driver: string | null
+  safety_car: boolean | null
 }
 
-interface ExistingPrediction extends FormState {
+interface ExistingPrediction {
   event_id: number
+  pole_position: string | null
+  first_place: string | null
+  second_place: string | null
+  third_place: string | null
+  fourth_place: string | null
+  fifth_place: string | null
+  fastest_lap: string | null
+  dnf_driver: string | null
+  safety_car: boolean | null
   points: number | null
   is_scored: boolean
 }
 
 const BLANK: FormState = {
-  first_place: null, second_place: null, third_place: null,
-  fastest_lap: null, pole_position: null, dnf_driver: null,
+  pole_position: null, first_place: null, second_place: null, third_place: null,
+  fourth_place: null, fifth_place: null, fastest_lap: null,
+  dnf_driver: null, safety_car: null,
 }
 
 function DriverChip({ code }: { code: string }) {
@@ -70,12 +92,10 @@ export default function PredictClient({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
-  // Read token from localStorage on mount (localStorage is client-only)
   useEffect(() => {
     setToken(localStorage.getItem("token"))
   }, [])
 
-  // Fetch existing prediction when we have a token and know the next race
   useEffect(() => {
     if (!token || !nextRace) return
     setLoadingExisting(true)
@@ -92,13 +112,15 @@ export default function PredictClient({
       .finally(() => setLoadingExisting(false))
   }, [token, nextRace])
 
-  // Drivers already chosen in other required slots (for deduplication)
+  // Position slots deduplicate against each other; DNF slot can share a driver
   function disabledFor(currentKey: keyof FormState): Set<string> {
-    const others = (Object.keys(form) as (keyof FormState)[])
-      .filter((k) => k !== currentKey && k !== "dnf_driver")
-      .map((k) => form[k])
-      .filter((v): v is string => v !== null)
-    return new Set(others)
+    if (!POSITION_KEYS.has(currentKey)) return new Set()
+    return new Set(
+      (Object.keys(form) as (keyof FormState)[])
+        .filter((k) => k !== currentKey && POSITION_KEYS.has(k))
+        .map((k) => form[k])
+        .filter((v): v is string => v !== null)
+    )
   }
 
   function set(key: keyof FormState) {
@@ -106,8 +128,9 @@ export default function PredictClient({
   }
 
   const canSubmit =
-    form.first_place && form.second_place && form.third_place &&
-    form.fastest_lap && form.pole_position
+    form.pole_position && form.first_place && form.second_place && form.third_place &&
+    form.fourth_place && form.fifth_place && form.fastest_lap && form.dnf_driver &&
+    form.safety_car !== null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -195,21 +218,21 @@ export default function PredictClient({
             Your picks for this race are already submitted.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2">
-            {SLOTS.map(({ key, label }) => (
+            {DRIVER_SLOTS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
                   {label}
                 </p>
-                {existing[key] ? <DriverChip code={existing[key]!} /> : <span className="text-text-dim text-xs">—</span>}
+                {existing[key]
+                  ? <DriverChip code={existing[key] as string} />
+                  : <span className="text-text-dim text-xs">—</span>}
               </div>
             ))}
             <div className="space-y-1">
-              <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-                DNF Pick
-              </p>
-              {existing.dnf_driver
-                ? <DriverChip code={existing.dnf_driver} />
-                : <span className="text-text-dim text-xs">—</span>}
+              <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">Safety Car</p>
+              <span className="text-xs font-(family-name:--font-dm-mono) text-text-secondary">
+                {existing.safety_car === null ? "—" : existing.safety_car ? "Yes" : "No"}
+              </span>
             </div>
           </div>
           {existing.is_scored && (
@@ -231,19 +254,19 @@ export default function PredictClient({
         <div className="glass-card-accent p-6 space-y-4">
           <p className="section-label text-f1-green">Prediction Submitted</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2">
-            {SLOTS.map(({ key, label }) => (
+            {DRIVER_SLOTS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
-                <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-                  {label}
-                </p>
-                {form[key] ? <DriverChip code={form[key]!} /> : <span className="text-text-dim text-xs">—</span>}
+                <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">{label}</p>
+                {form[key]
+                  ? <DriverChip code={form[key] as string} />
+                  : <span className="text-text-dim text-xs">—</span>}
               </div>
             ))}
             <div className="space-y-1">
-              <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-                DNF Pick
-              </p>
-              {form.dnf_driver ? <DriverChip code={form.dnf_driver} /> : <span className="text-text-dim text-xs">—</span>}
+              <p className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">Safety Car</p>
+              <span className="text-xs font-(family-name:--font-dm-mono) text-text-secondary">
+                {form.safety_car === null ? "—" : form.safety_car ? "Yes" : "No"}
+              </span>
             </div>
           </div>
         </div>
@@ -261,22 +284,21 @@ export default function PredictClient({
         <div className="glass-card p-6 animate-pulse">
           <div className="h-4 bg-border-subtle rounded w-1/3 mb-4" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-border-subtle rounded" />)}
+            {[...Array(9)].map((_, i) => <div key={i} className="h-10 bg-border-subtle rounded" />)}
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="glass-card p-6 space-y-6">
           <p className="section-label">Your Picks</p>
 
-          {/* Required slots — P1/P2/P3/FL/Pole */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {SLOTS.map(({ key, label, placeholder }) => (
+            {DRIVER_SLOTS.map(({ key, label, placeholder }) => (
               <div key={key} className="space-y-1.5">
                 <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
                   {label}
                 </label>
                 <DriverSelect
-                  value={form[key]}
+                  value={form[key] as string | null}
                   onChange={set(key)}
                   placeholder={placeholder}
                   disabledCodes={disabledFor(key)}
@@ -284,17 +306,28 @@ export default function PredictClient({
               </div>
             ))}
 
-            {/* DNF — optional */}
+            {/* Safety Car — required yes/no */}
             <div className="space-y-1.5">
               <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-                DNF Pick <span className="text-text-dim normal-case">(optional)</span>
+                Safety Car Deployed?
               </label>
-              <DriverSelect
-                value={form.dnf_driver}
-                onChange={set("dnf_driver")}
-                placeholder="No pick"
-                optional
-              />
+              <div className="flex gap-2">
+                {([true, false] as const).map((val) => (
+                  <button
+                    key={String(val)}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, safety_car: val }))}
+                    className={`px-4 py-1.5 text-[0.65rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
+                                border transition-colors cursor-pointer
+                                ${form.safety_car === val
+                                  ? "border-f1-red bg-f1-red text-white"
+                                  : "border-border-muted text-text-muted hover:border-[#444] hover:text-text-primary"
+                                }`}
+                  >
+                    {val ? "Yes" : "No"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

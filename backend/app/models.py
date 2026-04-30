@@ -28,9 +28,12 @@ class Prediction(SQLModel, table=True):
     first_place: str
     second_place: str
     third_place: str
+    fourth_place: Optional[str] = None
+    fifth_place: Optional[str] = None
     fastest_lap: Optional[str] = None
     dnf_driver: Optional[str] = None
     pole_position: Optional[str] = None
+    safety_car: Optional[bool] = None
     points_earned: int = Field(default=0)
 
 
@@ -56,12 +59,15 @@ class UserCreate(BaseModel):
 
 
 class PredictionCreate(BaseModel):
+    pole_position: str
     first_place: str
     second_place: str
     third_place: str
-    fastest_lap: Optional[str] = None
-    dnf_driver: Optional[str] = None
-    pole_position: Optional[str] = None
+    fourth_place: str
+    fifth_place: str
+    fastest_lap: str
+    dnf_driver: str
+    safety_car: bool
 
 
 class GroupCreate(BaseModel):
