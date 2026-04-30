@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   // Use date-based filtering — is_completed only flips after admin scoring,
   // so unscored past races would incorrectly appear as "upcoming" otherwise.
   const nextRace = events.find((e) => e.event_date >= today) ?? null
-  const upcomingAfterNext = events.filter((e) => e.event_date > (nextRace?.event_date ?? today)).slice(0, 4)
+  const upcomingAfterNext = events.filter((e) => e.event_date > (nextRace?.event_date ?? today))
   const completedCount = events.filter((e) => e.event_date < today).length
   const remainingCount = events.filter((e) => e.event_date >= today).length
 

@@ -28,7 +28,7 @@ function getTimeLeft(targetDate: string): TimeLeft {
 const FLAG_CODES: Record<string, string> = {
   Australia: "AU", Bahrain: "BH", "Saudi Arabia": "SA", Japan: "JP",
   China: "CN", "United States": "US", Italy: "IT", Monaco: "MC",
-  Spain: "ES", Canada: "CA", Austria: "AT", "Great Britain": "GB",
+  Spain: "ES", Canada: "CA", Austria: "AT", "Great Britain": "GB", "United Kingdom": "GB",
   Hungary: "HU", Belgium: "BE", Netherlands: "NL", Azerbaijan: "AZ",
   Singapore: "SG", Mexico: "MX", Brazil: "BR", Qatar: "QA",
   "Abu Dhabi": "AE", "United Arab Emirates": "AE",
@@ -37,7 +37,7 @@ const FLAG_CODES: Record<string, string> = {
 const TRACK_IMAGES: Record<string, string> = {
   Australia: "Australia", Bahrain: "Bahrain", "Saudi Arabia": "SaudiArabia",
   Japan: "Japan", China: "China", Monaco: "Monaco", Spain: "Spain",
-  Canada: "Canada", Austria: "Austria", "Great Britain": "UnitedKingdom",
+  Canada: "Canada", Austria: "Austria", "Great Britain": "UnitedKingdom", "United Kingdom": "UnitedKingdom",
   Hungary: "Hungary", Belgium: "Belgium", Netherlands: "Netherlands",
   Azerbaijan: "Azerbaijan", Singapore: "Singapore", Mexico: "Mexico",
   Brazil: "Brazil", Qatar: "Qatar", "Abu Dhabi": "UnitedArabEmirates",
@@ -190,7 +190,7 @@ export default function NextRaceCard({ event, upcomingRaces }: Props) {
                     </span>
                   </div>
                   {thumb && (
-                    <div className="relative h-16 opacity-50">
+                    <div className="relative h-24 opacity-50">
                       <Image src={thumb} alt={race.country} fill className="object-contain" />
                     </div>
                   )}

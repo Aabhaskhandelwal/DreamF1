@@ -4,10 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 
 export default function Login() {
   const [username, setUsername] = useState("")
@@ -19,7 +15,6 @@ export default function Login() {
     e.preventDefault()
     setError("")
 
-    // Login expects form-encoded data (OAuth2PasswordRequestForm)
     const formData = new URLSearchParams()
     formData.append("username", username)
     formData.append("password", password)
@@ -39,37 +34,140 @@ export default function Login() {
       localStorage.setItem("token", data.access_token)
       localStorage.setItem("username", username)
       router.push("/dashboard")
-    } catch (err) {
+    } catch {
       setError("Could not connect to the server")
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center flex flex-col items-center gap-3">
-          <Image src="/logo.svg" alt="DreamF1" width={96} height={32} priority />
-          <CardDescription>Sign in to lock your predictions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      {/* Back button — top-left, always visible */}
+      <button
+        onClick={() => router.push("/dashboard")}
+        className="fixed top-5 left-5 flex items-center gap-1.5 text-[0.65rem]
+                   font-(family-name:--font-dm-mono) uppercase tracking-widest
+                   text-text-muted hover:text-text-secondary transition-colors z-10"
+      >
+        ← Back
+      </button>
+
+      <div
+        className="w-full max-w-sm md:max-w-3xl animate-fade-in-up"
+        style={{ animationDuration: "0.45s", animationFillMode: "both" }}
+      >
+        <div className="glass-card border border-border-default overflow-hidden md:flex">
+
+          {/* ── Left panel (desktop only) ───────────────────────── */}
+          <div className="hidden md:flex flex-col justify-between p-10 bg-surface-1
+                          border-r border-border-default w-80 shrink-0">
+            <div className="space-y-6">
+              <Image src="/logo.svg" alt="DreamF1" width={88} height={30} priority />
+              <div className="space-y-3">
+                <h2 className="font-(family-name:--font-orbitron) text-xl font-bold
+                               text-text-primary leading-snug tracking-wide">
+                  Your Circle.<br />Your Predictions.
+                </h2>
+                <p className="text-text-muted text-sm font-(family-name:--font-dm-sans) leading-relaxed">
+                  Lock in podium picks, earn points, and climb your group leaderboard every race weekend.
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+
+            {/* Decorative round count */}
+            <div className="space-y-1">
+              <p className="section-label">2026 Season</p>
+              <p className="font-(family-name:--font-orbitron) text-3xl font-bold text-f1-red">24</p>
+              <p className="section-label">Rounds to predict</p>
             </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <Button type="submit" className="w-full">Sign In</Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link href="/register" className="text-primary underline">Register</Link>
+          </div>
+
+          {/* ── Right panel: form ───────────────────────────────── */}
+          <div className="flex-1 p-8 space-y-7">
+            {/* Mobile logo (hidden on desktop since left panel has it) */}
+            <div className="flex flex-col items-center gap-3 md:hidden">
+              <Image src="/logo.svg" alt="DreamF1" width={80} height={27} priority />
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="font-(family-name:--font-orbitron) text-lg font-bold
+                             text-text-primary tracking-wide">
+                Sign In
+              </h1>
+              <p className="section-label">Access your predictions</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="username"
+                  className="block section-label text-text-muted"
+                >
+                  Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  placeholder="your_username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  className="w-full bg-surface-2 border border-border-default px-3 py-2.5
+                             text-sm font-(family-name:--font-dm-mono) text-text-primary
+                             placeholder:text-text-dim
+                             focus:outline-none focus:border-f1-red transition-colors"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="password"
+                  className="block section-label text-text-muted"
+                >
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full bg-surface-2 border border-border-default px-3 py-2.5
+                             text-sm font-(family-name:--font-dm-mono) text-text-primary
+                             placeholder:text-text-dim
+                             focus:outline-none focus:border-f1-red transition-colors"
+                />
+              </div>
+
+              {error && (
+                <p className="text-xs font-(family-name:--font-dm-mono) text-f1-red">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-f1-red text-white text-xs
+                           font-(family-name:--font-dm-mono) uppercase tracking-widest
+                           hover:bg-f1-red-dark transition-colors"
+              >
+                Sign In →
+              </button>
+            </form>
+
+            <p className="text-center text-[0.65rem] font-(family-name:--font-dm-mono)
+                          text-text-muted uppercase tracking-wider">
+              No account?{" "}
+              <Link
+                href="/register"
+                className="text-text-secondary hover:text-text-primary underline underline-offset-2 transition-colors"
+              >
+                Register
+              </Link>
             </p>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
