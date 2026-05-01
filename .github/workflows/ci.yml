@@ -31,7 +31,8 @@ jobs:
             "python-multipart" \
             "uvicorn" \
             "httpx" \
-            "pytest"
+            "pytest" \
+            "python-dotenv"
 
       - name: Run tests
         run: pytest tests/ -v
