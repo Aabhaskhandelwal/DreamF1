@@ -19,8 +19,19 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install dependencies
-        run: pip install uv && uv pip install --system .
+      - name: Install test dependencies
+        # Only install what tests need — fastf1/streamlit/scipy are mocked or unused in tests
+        run: |
+          pip install uv
+          uv pip install --system \
+            "fastapi>=0.115.0" \
+            "sqlmodel>=0.0.22" \
+            "python-jose[cryptography]" \
+            "passlib[bcrypt]" \
+            "python-multipart" \
+            "uvicorn" \
+            "httpx" \
+            "pytest"
 
       - name: Run tests
         run: pytest tests/ -v
