@@ -4,8 +4,8 @@ RUN pip install uv
 
 WORKDIR /app
 
-COPY pyproject.toml .
-RUN uv pip install --system --no-cache .
+COPY requirements.txt .
+RUN uv pip install --system --no-cache -r requirements.txt
 
 COPY app/ ./app/
 COPY main.py .
