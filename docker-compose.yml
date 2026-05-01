@@ -16,6 +16,9 @@ services:
       retries: 10
 
   backend:
+    # IMAGE_TAG is set by the deploy workflow (github.sha). Falls back to
+    # building locally when IMAGE_TAG is unset (local dev).
+    image: ${ECR_REGISTRY:-local}/myf1circle-backend:${IMAGE_TAG:-local}
     build: ./backend
     ports:
       - "8080:8080"
