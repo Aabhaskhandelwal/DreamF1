@@ -32,7 +32,7 @@ def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_session] = override
-    with patch("main.create_db_and_tables"):
+    with patch("main.create_db_and_tables"), patch("main.engine", MagicMock()):
         with TestClient(app) as c:
             yield c
     app.dependency_overrides.clear()
