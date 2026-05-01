@@ -32,7 +32,8 @@ jobs:
             "uvicorn" \
             "httpx" \
             "pytest" \
-            "python-dotenv"
+            "python-dotenv" \
+            "psycopg2-binary"
 
       - name: Run tests
         run: pytest tests/ -v
