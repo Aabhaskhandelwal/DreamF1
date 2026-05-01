@@ -57,7 +57,7 @@ jobs:
             --parameters "commands=[
               'aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY',
               'docker pull $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}',
-              'cd /home/ec2-user/myf1circle && IMAGE_TAG=${{ github.sha }} docker compose up -d backend'
+              'cd /opt/myf1circle && IMAGE_TAG=${{ github.sha }} docker compose up -d backend'
             ]" \
             --query "Command.CommandId" \
             --output text)
