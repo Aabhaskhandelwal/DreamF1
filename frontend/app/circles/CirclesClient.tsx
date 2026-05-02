@@ -18,7 +18,7 @@ interface LeaderboardEntry {
 
 type View = "list" | "create" | "join" | "leaderboard"
 
-const API = "http://localhost:8080/api"
+const API = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api`
 
 function authHeaders(token: string) {
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
