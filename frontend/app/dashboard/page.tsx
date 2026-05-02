@@ -3,6 +3,8 @@ import SeasonMetrics from "./SeasonMetrics"
 import CirclesOverview from "./CirclesOverview"
 import NavHeader from "@/components/NavHeader"
 
+export const dynamic = "force-dynamic"
+
 export interface F1Event {
   id: number
   round_number: number
@@ -15,7 +17,7 @@ export interface F1Event {
 async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean }> {
   try {
     const res = await fetch(`${process.env.API_URL ?? "http://localhost:8080"}/api/schedule`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     })
     if (!res.ok) return { events: [], backendDown: true }
     const events: F1Event[] = await res.json()
