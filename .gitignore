@@ -192,3 +192,7 @@ notes
 backend/cache/fastf1_http_cache.sqlite
 *cache
 f1-telemetry-master
+
+.claude/
+.playwright-mcp/
+CLAUDE.md
