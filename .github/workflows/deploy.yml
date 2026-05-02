@@ -59,29 +59,9 @@ jobs:
              cd /opt/myf1circle && IMAGE_TAG=${{ github.sha }} ECR_REGISTRY=$ECR_REGISTRY docker compose up -d backend"
           rm -f /tmp/deploy_key
 
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-myf1circle
-          aws-region: ${{ env.AWS_REGION }}
-
-      # Amplify builds Next.js server-side natively (SSR support built-in)
-      # Disable Amplify's GitHub auto-build in the console so this is the only trigger
-      - name: Trigger Amplify deployment
-        run: |
-          JOB_ID=$(aws amplify start-job \
-            --app-id "${{ secrets.AMPLIFY_APP_ID }}" \
-            --branch-name main \
-            --job-type RELEASE \
-            --query "jobSummary.jobId" \
-            --output text)
-
-          echo "Amplify job: $JOB_ID"
-          aws amplify wait job-completed \
-            --app-id "${{ secrets.AMPLIFY_APP_ID }}" \
-            --branch-name main \
-            --job-id "$JOB_ID"
+  # Frontend is deployed automatically by Vercel on every push to main
+  # (Vercel GitHub integration watches the repo — no workflow step needed)
+  # Vercel env vars required in project settings:
+  #   API_URL=http://<EC2-IP>:8080          (server-only, for SSR fetches)
+  #   NEXT_PUBLIC_API_URL=                   (empty — client uses /api/* proxy)
+  # vercel.json rewrites /api/* → http://<EC2-IP>:8080/api/* server-side

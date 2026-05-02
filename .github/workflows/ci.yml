@@ -63,9 +63,9 @@ jobs:
       - run: npm ci
 
       - name: Type-check and build
+        # NEXT_PUBLIC_API_URL intentionally empty — client components use relative
+        # /api/* URLs proxied by vercel.json; server components use API_URL (server-only)
         run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8080
 
   docker-build:
     runs-on: ubuntu-latest
