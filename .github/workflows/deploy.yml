@@ -51,12 +51,18 @@ jobs:
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/deploy_key
           chmod 600 /tmp/deploy_key
+
+          # Sync compose file so restart policies and config stay version-controlled
+          scp -i /tmp/deploy_key -o StrictHostKeyChecking=no \
+            deploy/docker-compose.yml \
+            ec2-user@${{ secrets.EC2_HOST }}:/opt/myf1circle/docker-compose.yml
+
           ssh -i /tmp/deploy_key \
             -o StrictHostKeyChecking=no \
             ec2-user@${{ secrets.EC2_HOST }} \
             "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY && \
              docker pull $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }} && \
-             cd /opt/myf1circle && IMAGE_TAG=${{ github.sha }} ECR_REGISTRY=$ECR_REGISTRY docker compose up -d backend"
+             cd /opt/myf1circle && IMAGE_TAG=${{ github.sha }} ECR_REGISTRY=$ECR_REGISTRY docker compose up -d"
           rm -f /tmp/deploy_key
 
   # Frontend is deployed automatically by Vercel on every push to main
