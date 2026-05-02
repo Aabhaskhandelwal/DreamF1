@@ -14,7 +14,7 @@ export interface F1Event {
 
 async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean }> {
   try {
-    const res = await fetch(`${process.env.API_URL ?? "http://localhost:8080"}/api/schedule`, {
+    const res = await fetch("http://localhost:8080/api/schedule", {
       next: { revalidate: 3600 },
     })
     if (!res.ok) return { events: [], backendDown: true }

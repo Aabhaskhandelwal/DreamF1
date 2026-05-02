@@ -4,7 +4,7 @@ import type { F1Event } from "../dashboard/page"
 
 async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean }> {
   try {
-    const res = await fetch(`${process.env.API_URL ?? "http://localhost:8080"}/api/schedule`, {
+    const res = await fetch("http://localhost:8080/api/schedule", {
       cache: "no-store",
     })
     if (!res.ok) return { events: [], backendDown: true }
