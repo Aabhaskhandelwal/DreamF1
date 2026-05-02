@@ -92,7 +92,7 @@ export default function TelemetryClient({
     setSummary(null); setTyres(null); setQuali(null)
     setSpeed(null); setPositions(null); setGaps(null); setLapTimes(null); setSectors(null); setMapData(null)
 
-    const base = `http://localhost:8080/api/telemetry/2026/${roundNum}`
+    const base = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}`
     const get = (path: string) =>
       fetch(`${base}/${path}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
 
@@ -105,37 +105,37 @@ export default function TelemetryClient({
   // Lazy loaders — fire only on first visit to that tab
   useEffect(() => {
     if (tab !== "laptimes" || lapTimes !== null || !roundNum) return
-    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/laptimes`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}/laptimes`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setLapTimes)
   }, [tab, roundNum, lapTimes])
 
   useEffect(() => {
     if (tab !== "positions" || positions !== null || !roundNum) return
-    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/positions`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}/positions`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setPositions)
   }, [tab, roundNum, positions])
 
   useEffect(() => {
     if (tab !== "gaps" || gaps !== null || !roundNum) return
-    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/gaps`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}/gaps`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setGaps)
   }, [tab, roundNum, gaps])
 
   useEffect(() => {
     if (tab !== "sectors" || sectors !== null || !roundNum) return
-    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/sector_times`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}/sector_times`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSectors)
   }, [tab, roundNum, sectors])
 
   useEffect(() => {
     if (tab !== "speed" || speed !== null || !roundNum) return
-    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/speed`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}/speed`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSpeed)
   }, [tab, roundNum, speed])
 
   useEffect(() => {
     if (tab !== "map" || mapData !== null || !roundNum) return
-    fetch(`http://localhost:8080/api/telemetry/2026/${roundNum}/map`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/telemetry/2026/${roundNum}/map`)
       .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setMapData)
   }, [tab, roundNum, mapData])
 

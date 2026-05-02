@@ -99,7 +99,7 @@ export default function PredictClient({
   useEffect(() => {
     if (!token || !nextRace) return
     setLoadingExisting(true)
-    fetch("http://localhost:8080/api/predictions", {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/predictions`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -138,7 +138,7 @@ export default function PredictClient({
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const res = await fetch("http://localhost:8080/api/predict", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/predict`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

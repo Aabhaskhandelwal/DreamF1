@@ -22,7 +22,7 @@ export default function CirclesOverview() {
       setLoading(false)
       return
     }
-    fetch("http://localhost:8080/api/groups", {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/groups`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : []))

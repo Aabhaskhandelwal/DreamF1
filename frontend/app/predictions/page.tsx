@@ -72,10 +72,10 @@ export default function PredictionsPage() {
     const today = new Date().toISOString().split("T")[0]
 
     Promise.all([
-      fetch("http://localhost:8080/api/predictions", {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/predictions`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("http://localhost:8080/api/schedule", { cache: "no-store" })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/schedule`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([preds, events]: [Prediction[], F1Event[]]) => {
       const eventMap = new Map(events.map((e) => [e.id, e]))
