@@ -12,11 +12,24 @@ export interface F1Event {
   country: string
   event_date: string
   is_completed: boolean
+  session1_name: string | null
+  session1_date: string | null
+  session2_name: string | null
+  session2_date: string | null
+  session3_name: string | null
+  session3_date: string | null
+  session4_name: string | null
+  session4_date: string | null
+  session5_name: string | null
+  session5_date: string | null
 }
 
 async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean }> {
   try {
-    const res = await fetch(`${process.env.API_URL ?? "http://localhost:8080"}/api/schedule`, {
+    const base = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : (process.env.API_URL ?? "http://localhost:8080")
+    const res = await fetch(`${base}/api/schedule`, {
       cache: "no-store",
     })
     if (!res.ok) return { events: [], backendDown: true }
