@@ -2,6 +2,8 @@ import NavHeader from "@/components/NavHeader"
 import PredictClient from "./PredictClient"
 import type { F1Event } from "../dashboard/page"
 
+export const dynamic = "force-dynamic"
+
 async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean }> {
   try {
     const res = await fetch(`${process.env.API_URL ?? "http://localhost:8080"}/api/schedule`, {
