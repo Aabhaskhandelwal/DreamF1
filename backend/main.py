@@ -131,8 +131,9 @@ def get_schedule(session: Session = Depends(get_session)):
         )
         if rn in existing:
             ev = existing[rn]
-            for k, v in fields.items():
-                setattr(ev, k, v)
+            ev.event_name = fields['event_name']
+            ev.country = fields['country']
+            ev.event_date = fields['event_date']
         else:
             ev = Event(round_number=rn, **fields)
             session.add(ev)
