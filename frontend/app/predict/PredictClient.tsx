@@ -80,9 +80,11 @@ function DriverChip({ code }: { code: string }) {
 export default function PredictClient({
   nextRace,
   backendDown,
+  locked,
 }: {
   nextRace: F1Event | null
   backendDown: boolean
+  locked: boolean
 }) {
   const [token, setToken] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(BLANK)
@@ -207,6 +209,7 @@ export default function PredictClient({
   })
 
   // ── Already submitted (from server) ──────────────────────────────
+  // Show submitted picks regardless of lock state — users can always view their picks.
 
   if (existing && !submitted) {
     return (
@@ -240,6 +243,26 @@ export default function PredictClient({
               {existing.points ?? 0} <span className="text-sm text-text-muted font-(family-name:--font-dm-mono)">pts</span>
             </p>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Predictions locked (FP1 already started) ─────────────────────
+
+  if (locked && !existing) {
+    return (
+      <div className="space-y-6">
+        <RaceHeader event={nextRace} formattedDate={formattedDate} />
+        <div className="glass-card-accent p-6 space-y-3">
+          <p className="section-label text-text-muted">Predictions Closed</p>
+          <p className="text-text-muted text-sm font-(family-name:--font-dm-mono)">
+            The prediction window for this race has closed — sessions have already begun.
+            Predictions lock when Practice 1 starts so results can&apos;t influence your picks.
+          </p>
+          <p className="text-text-dim text-xs font-(family-name:--font-dm-mono)">
+            Come back before FP1 for the next round.
+          </p>
         </div>
       </div>
     )

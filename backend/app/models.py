@@ -19,6 +19,16 @@ class Event(SQLModel, table=True):
     country: str
     event_date: date
     is_completed: bool = Field(default=False)
+    session1_name: Optional[str] = None
+    session1_date: Optional[datetime] = None
+    session2_name: Optional[str] = None
+    session2_date: Optional[datetime] = None
+    session3_name: Optional[str] = None
+    session3_date: Optional[datetime] = None
+    session4_name: Optional[str] = None
+    session4_date: Optional[datetime] = None
+    session5_name: Optional[str] = None
+    session5_date: Optional[datetime] = None
 
 
 class Prediction(SQLModel, table=True):

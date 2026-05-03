@@ -134,6 +134,16 @@ def get_schedule(session: Session = Depends(get_session)):
             ev.event_name = fields['event_name']
             ev.country = fields['country']
             ev.event_date = fields['event_date']
+            ev.session1_name = fields['session1_name']
+            ev.session1_date = fields['session1_date']
+            ev.session2_name = fields['session2_name']
+            ev.session2_date = fields['session2_date']
+            ev.session3_name = fields['session3_name']
+            ev.session3_date = fields['session3_date']
+            ev.session4_name = fields['session4_name']
+            ev.session4_date = fields['session4_date']
+            ev.session5_name = fields['session5_name']
+            ev.session5_date = fields['session5_date']
         else:
             ev = Event(round_number=rn, **fields)
             session.add(ev)

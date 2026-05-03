@@ -12,10 +12,8 @@ interface TimeLeft {
   seconds: number
 }
 
-function getTimeLeft(targetDate: string): TimeLeft {
-  // Treat event_date as noon UTC so the countdown doesn't expire at midnight
-  const target = new Date(targetDate + "T12:00:00Z").getTime()
-  const diff = target - Date.now()
+function getTimeLeft(ms: number): TimeLeft {
+  const diff = ms - Date.now()
   if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 }
   return {
     days: Math.floor(diff / 86400000),
@@ -23,6 +21,42 @@ function getTimeLeft(targetDate: string): TimeLeft {
     minutes: Math.floor((diff % 3600000) / 60000),
     seconds: Math.floor((diff % 60000) / 1000),
   }
+}
+
+// Backend stores session dates as naive UTC — append Z so the browser parses as UTC
+function parseUTC(iso: string | null): Date | null {
+  if (!iso) return null
+  return new Date(iso.endsWith("Z") ? iso : iso + "Z")
+}
+
+function abbrevSession(name: string): string {
+  const n = name.toLowerCase()
+  if (n === "race") return "RACE"
+  if (n.includes("practice 1")) return "FP1"
+  if (n.includes("practice 2")) return "FP2"
+  if (n.includes("practice 3")) return "FP3"
+  if (n.includes("sprint shootout") || n.includes("sprint qualifying")) return "SQ"
+  if (n.includes("sprint")) return "SPRINT"
+  if (n.includes("qualifying")) return "QUALI"
+  return name.toUpperCase()
+}
+
+interface Session {
+  name: string
+  abbrev: string
+  date: Date
+}
+
+function getSessions(event: F1Event): Session[] {
+  return [1, 2, 3, 4, 5]
+    .map((i) => {
+      const name = event[`session${i}_name` as keyof F1Event] as string | null
+      const raw = event[`session${i}_date` as keyof F1Event] as string | null
+      const date = parseUTC(raw)
+      if (!name || !date) return null
+      return { name, abbrev: abbrevSession(name), date }
+    })
+    .filter(Boolean) as Session[]
 }
 
 const FLAG_CODES: Record<string, string> = {
@@ -83,32 +117,44 @@ interface Props {
 export default function NextRaceCard({ event, upcomingRaces }: Props) {
   const [mounted, setMounted] = useState(false)
   const [time, setTime] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [now, setNow] = useState(0)
 
-  // Defer to client — avoids SSR/client Date.now() hydration mismatch
+  const sessions = getSessions(event)
+
+  // Find the next upcoming session; fall back to race date at noon UTC
+  const raceDateFallback = new Date(event.event_date + "T12:00:00Z").getTime()
+  const nextSession = sessions.find((s) => s.date.getTime() > (mounted ? Date.now() : 0))
+  const countdownTarget = nextSession?.date.getTime() ?? raceDateFallback
+
   useEffect(() => {
     setMounted(true)
-    setTime(getTimeLeft(event.event_date))
-    const id = setInterval(() => setTime(getTimeLeft(event.event_date)), 1000)
+    setNow(Date.now())
+    setTime(getTimeLeft(countdownTarget))
+    const id = setInterval(() => {
+      setNow(Date.now())
+      setTime(getTimeLeft(countdownTarget))
+    }, 1000)
     return () => clearInterval(id)
-  }, [event.event_date])
+  }, [countdownTarget])
 
   const flagCode = FLAG_CODES[event.country] ?? "UN"
   const trackImage = getTrackImage(event.country, event.event_name)
   const formattedDate = new Date(event.event_date + "T12:00:00Z").toLocaleDateString("en-GB", {
     day: "numeric", month: "long", year: "numeric",
   })
+  const nextLabel = nextSession ? `Next: ${nextSession.abbrev}` : "Race Weekend"
 
   return (
     <section className="space-y-4">
       {/* Hero card */}
       <div className="glass-card-accent overflow-hidden">
         <div className="flex flex-col lg:flex-row">
-          {/* Left: race info + countdown */}
+          {/* Left: race info + countdown + session schedule */}
           <div className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-6 sm:gap-8">
             {/* Race header */}
             <div>
               <p className="section-label mb-3 text-f1-red">
-                Round {event.round_number} · Next Race
+                Round {event.round_number} · {nextLabel}
               </p>
               <div className="flex items-center gap-3 mb-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -138,14 +184,53 @@ export default function NextRaceCard({ event, upcomingRaces }: Props) {
               <CountdownUnit value={time.seconds} label="SEC"     mounted={mounted} />
             </div>
 
-            <Link
-              href="/predict"
-              className="self-start px-5 py-2.5 bg-f1-red text-white text-xs
-                         font-(family-name:--font-dm-mono) uppercase tracking-widest
-                         hover:bg-f1-red-dark transition-colors"
-            >
-              Lock Prediction →
-            </Link>
+            {/* Session schedule */}
+            {sessions.length > 0 && (
+              <div className="space-y-1" suppressHydrationWarning>
+                {sessions.map((s) => {
+                  const isPast = mounted && s.date.getTime() < now
+                  const isNext = mounted && !isPast && s === nextSession
+                  return (
+                    <div
+                      key={s.name}
+                      className={`flex items-center justify-between py-1.5 px-2 border-b border-border-subtle
+                                  ${isPast ? "opacity-30" : ""}`}
+                    >
+                      <span className={`text-[0.65rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
+                                        ${isNext ? "text-f1-red" : isPast ? "text-text-dim" : "text-text-muted"}`}>
+                        {s.abbrev}
+                        {isNext && <span className="ml-2 text-[0.5rem] text-f1-red">▶ NEXT</span>}
+                      </span>
+                      <span className="text-[0.65rem] font-(family-name:--font-dm-mono) text-text-dim tabular-nums">
+                        {mounted
+                          ? s.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+                            + " · "
+                            + s.date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                          : "—"}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Button is suppressed until mounted to avoid hydration mismatch */}
+            {!mounted ? null : sessions[0] && sessions[0].date.getTime() < Date.now() ? (
+              <span className="self-start px-5 py-2.5 text-xs font-(family-name:--font-dm-mono)
+                               uppercase tracking-widest text-text-dim border border-border-subtle
+                               opacity-50 cursor-not-allowed">
+                Predictions Closed
+              </span>
+            ) : (
+              <Link
+                href="/predict"
+                className="self-start px-5 py-2.5 bg-f1-red text-white text-xs
+                           font-(family-name:--font-dm-mono) uppercase tracking-widest
+                           hover:bg-f1-red-dark transition-colors"
+              >
+                Lock Prediction →
+              </Link>
+            )}
           </div>
 
           {/* Right: track image */}
@@ -170,9 +255,10 @@ export default function NextRaceCard({ event, upcomingRaces }: Props) {
             {upcomingRaces.map((race) => {
               const flag = FLAG_CODES[race.country] ?? "UN"
               const thumb = getTrackImage(race.country, race.event_name)
-              const date = new Date(race.event_date + "T12:00:00Z").toLocaleDateString("en-GB", {
-                day: "numeric", month: "short",
-              })
+              const raceDate = race.session5_date
+                ? parseUTC(race.session5_date)
+                : new Date(race.event_date + "T12:00:00Z")
+              const date = raceDate?.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) ?? ""
               return (
                 <div
                   key={race.id}
