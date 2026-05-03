@@ -11,7 +11,7 @@ from app.models import User, UserCreate, Prediction, PredictionCreate, Event, Gr
 from app.auth import get_password_hash, verify_password, create_access_token, get_current_user
 import fastf1 as ff1
 import pandas as pd
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -63,6 +63,9 @@ async def lifespan(app: FastAPI):
             ("safety_car", "BOOLEAN"),
         ]:
             conn.execute(text(f"ALTER TABLE prediction ADD COLUMN IF NOT EXISTS {col} {typ}"))
+        for i in range(1, 6):
+            conn.execute(text(f"ALTER TABLE event ADD COLUMN IF NOT EXISTS session{i}_name VARCHAR"))
+            conn.execute(text(f"ALTER TABLE event ADD COLUMN IF NOT EXISTS session{i}_date TIMESTAMP"))
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -87,28 +90,57 @@ def read_root():
     return {"message": "Welcome to MyF1Circle API!"}
 
 
+def _parse_session_dt(val) -> "datetime | None":
+    """Convert a FastF1 Timestamp to a naive UTC datetime, or None if missing."""
+    from datetime import timezone as tz
+    if val is None or not pd.notna(val):
+        return None
+    dt = val.to_pydatetime()
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(tz.utc).replace(tzinfo=None)
+    return dt
+
+def _clean_str(val) -> "str | None":
+    s = str(val).strip() if val is not None else ""
+    return s if s and s.lower() != "nan" else None
+
 @app.get("/api/schedule")
 def get_schedule(session: Session = Depends(get_session)):
-    db_events = session.exec(select(Event)).all()
-    if db_events:
-        return db_events
+    schedule = ff1.get_event_schedule(2026)
+    filtered = schedule[schedule['RoundNumber'] > 0]
+    existing = {e.round_number: e for e in session.exec(select(Event)).all()}
 
-    event_schedule = ff1.get_event_schedule(2026)
-    filtered = event_schedule[event_schedule['RoundNumber'] > 0]
-
-    new_events = []
+    result = []
     for _, row in filtered.iterrows():
-        event = Event(
-            round_number=row['RoundNumber'],
+        rn = int(row['RoundNumber'])
+        fields = dict(
             event_name=row['EventName'],
             country=row['Country'],
-            event_date=row['EventDate'].to_pydatetime().date()
+            event_date=row['EventDate'].to_pydatetime().date(),
+            session1_name=_clean_str(row.get('Session1')),
+            session1_date=_parse_session_dt(row.get('Session1Date')),
+            session2_name=_clean_str(row.get('Session2')),
+            session2_date=_parse_session_dt(row.get('Session2Date')),
+            session3_name=_clean_str(row.get('Session3')),
+            session3_date=_parse_session_dt(row.get('Session3Date')),
+            session4_name=_clean_str(row.get('Session4')),
+            session4_date=_parse_session_dt(row.get('Session4Date')),
+            session5_name=_clean_str(row.get('Session5')),
+            session5_date=_parse_session_dt(row.get('Session5Date')),
         )
-        session.add(event)
-        new_events.append(event)
+        if rn in existing:
+            ev = existing[rn]
+            for k, v in fields.items():
+                setattr(ev, k, v)
+        else:
+            ev = Event(round_number=rn, **fields)
+            session.add(ev)
+        result.append(ev)
 
     session.commit()
-    return new_events
+    for ev in result:
+        session.refresh(ev)
+    return result
 
 
 @app.post("/api/register")
@@ -127,10 +159,15 @@ def register_user(user_data: UserCreate, session: Session = Depends(get_session)
     return {"message": "User created successfully!", "user_id": new_user.id}
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 @app.post("/api/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.username == form_data.username)).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+def login(login_data: LoginRequest, session: Session = Depends(get_session)):
+    user = session.exec(select(User).where(User.username == login_data.username)).first()
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     access_token = create_access_token(data={"sub": str(user.id)})

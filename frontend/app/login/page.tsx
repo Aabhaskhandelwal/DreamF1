@@ -15,19 +15,21 @@ export default function Login() {
     e.preventDefault()
     setError("")
 
-    const formData = new URLSearchParams()
-    formData.append("username", username)
-    formData.append("password", password)
-
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/login`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       })
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
-        setError((data as { detail?: string }).detail || "Login failed")
+        const detail = (data as { detail?: string | unknown[] }).detail
+        setError(
+          typeof detail === "string"
+            ? detail
+            : `Login failed (${response.status})`
+        )
         return
       }
 
