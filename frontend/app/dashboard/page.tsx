@@ -26,10 +26,7 @@ export interface F1Event {
 
 async function getSchedule(): Promise<{ events: F1Event[]; backendDown: boolean }> {
   try {
-    const base = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : (process.env.API_URL ?? "http://localhost:8080")
-    const res = await fetch(`${base}/api/schedule`, {
+    const res = await fetch(`${process.env.API_URL ?? "http://localhost:8080"}/api/schedule`, {
       cache: "no-store",
     })
     if (!res.ok) return { events: [], backendDown: true }
