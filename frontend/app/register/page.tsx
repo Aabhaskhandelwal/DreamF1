@@ -22,10 +22,10 @@ export default function Register() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),
       })
-      const data = await response.json()
 
       if (!response.ok) {
-        setError(data.detail || "Registration failed")
+        const data = await response.json().catch(() => ({}))
+        setError((data as { detail?: string }).detail || "Registration failed")
         return
       }
 

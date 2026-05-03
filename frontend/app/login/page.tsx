@@ -24,13 +24,14 @@ export default function Login() {
         method: "POST",
         body: formData,
       })
-      const data = await response.json()
 
       if (!response.ok) {
-        setError(data.detail || "Login failed")
+        const data = await response.json().catch(() => ({}))
+        setError((data as { detail?: string }).detail || "Login failed")
         return
       }
 
+      const data = await response.json()
       localStorage.setItem("token", data.access_token)
       localStorage.setItem("username", username)
       router.push("/dashboard")
