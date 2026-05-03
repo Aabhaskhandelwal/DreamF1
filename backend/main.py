@@ -3,6 +3,7 @@ import math
 import threading
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Session, select, func
 from contextlib import asynccontextmanager
 from app.database import create_db_and_tables, get_session, engine
