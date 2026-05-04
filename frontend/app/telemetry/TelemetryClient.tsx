@@ -22,6 +22,11 @@ interface SpeedData { session: string; drivers: Record<string, { distance: numbe
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
 
+function parseUTC(iso: string | null): Date | null {
+  if (!iso) return null
+  return new Date(iso.endsWith("Z") ? iso : iso + "Z")
+}
+
 const COUNTRY_TO_TRACK: Record<string, string> = {
   Australia: "Australia", Bahrain: "Bahrain", "Saudi Arabia": "SaudiArabia",
   Japan: "Japan", China: "China", Monaco: "Monaco", Spain: "Spain",
@@ -67,8 +72,13 @@ export default function TelemetryClient({
   events: F1Event[]
   backendDown: boolean
 }) {
-  const today = new Date().toISOString().split("T")[0]
-  const events = allEvents.filter((e) => e.event_date <= today)
+  const now = new Date()
+  // Only include a race once its race session (session5) has started.
+  // Falls back to strict event_date < today when session dates aren't populated yet.
+  const events = allEvents.filter((e) => {
+    const raceStart = parseUTC(e.session5_date) ?? new Date(e.event_date + "T23:59:59Z")
+    return raceStart <= now
+  })
 
   const last = events[events.length - 1]
   const [roundNum, setRoundNum] = useState<number>(last?.round_number ?? 0)
@@ -78,12 +88,12 @@ export default function TelemetryClient({
   const [summary, setSummary] = useState<RaceSummary | null>(null)
   const [tyres, setTyres] = useState<TyreData | null>(null)
   const [quali, setQuali] = useState<QualiData | null>(null)
-  const [speed, setSpeed] = useState<SpeedData | null>(null)
-  const [positions, setPositions] = useState<PositionData | null>(null)
-  const [gaps, setGaps] = useState<GapData | null>(null)
-  const [lapTimes, setLapTimes] = useState<LapTimesData | null>(null)
-  const [sectors, setSectors] = useState<SectorData | null>(null)
-  const [mapData, setMapData] = useState<MapData | null>(null)
+  const [speed, setSpeed] = useState<SpeedData | false | null>(null)
+  const [positions, setPositions] = useState<PositionData | false | null>(null)
+  const [gaps, setGaps] = useState<GapData | false | null>(null)
+  const [lapTimes, setLapTimes] = useState<LapTimesData | false | null>(null)
+  const [sectors, setSectors] = useState<SectorData | false | null>(null)
+  const [mapData, setMapData] = useState<MapData | false | null>(null)
 
   const selectedEvent = events.find((e) => e.round_number === roundNum)
 
@@ -96,7 +106,10 @@ export default function TelemetryClient({
 
     const base = `${API_BASE}/api/telemetry/2026/${roundNum}`
     const get = (path: string) =>
-      fetch(`${base}/${path}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      fetch(`${base}/${path}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)
+        .then((d) => (d && d._error ? null : d))
 
     Promise.all([get("race_summary"), get("tyres"), get("quali")]).then(([s, t, q]) => {
       setSummary(s); setTyres(t); setQuali(q)
@@ -104,41 +117,42 @@ export default function TelemetryClient({
     })
   }, [roundNum])
 
-  // Lazy loaders — fire only on first visit to that tab
+  // Lazy loaders — fire only on first visit to that tab.
+  // null = not yet fetched, false = tried and failed, T = data ready.
+  const lazyFetch = (url: string, set: (v: never | false) => void) =>
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d) => set((d && !d._error ? d : false) as never))
+
   useEffect(() => {
     if (tab !== "laptimes" || lapTimes !== null || !roundNum) return
-    fetch(`${API_BASE}/api/telemetry/2026/${roundNum}/laptimes`)
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setLapTimes)
+    lazyFetch(`${API_BASE}/api/telemetry/2026/${roundNum}/laptimes`, setLapTimes)
   }, [tab, roundNum, lapTimes])
 
   useEffect(() => {
     if (tab !== "positions" || positions !== null || !roundNum) return
-    fetch(`${API_BASE}/api/telemetry/2026/${roundNum}/positions`)
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setPositions)
+    lazyFetch(`${API_BASE}/api/telemetry/2026/${roundNum}/positions`, setPositions)
   }, [tab, roundNum, positions])
 
   useEffect(() => {
     if (tab !== "gaps" || gaps !== null || !roundNum) return
-    fetch(`${API_BASE}/api/telemetry/2026/${roundNum}/gaps`)
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setGaps)
+    lazyFetch(`${API_BASE}/api/telemetry/2026/${roundNum}/gaps`, setGaps)
   }, [tab, roundNum, gaps])
 
   useEffect(() => {
     if (tab !== "sectors" || sectors !== null || !roundNum) return
-    fetch(`${API_BASE}/api/telemetry/2026/${roundNum}/sector_times`)
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSectors)
+    lazyFetch(`${API_BASE}/api/telemetry/2026/${roundNum}/sector_times`, setSectors)
   }, [tab, roundNum, sectors])
 
   useEffect(() => {
     if (tab !== "speed" || speed !== null || !roundNum) return
-    fetch(`${API_BASE}/api/telemetry/2026/${roundNum}/speed`)
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setSpeed)
+    lazyFetch(`${API_BASE}/api/telemetry/2026/${roundNum}/speed`, setSpeed)
   }, [tab, roundNum, speed])
 
   useEffect(() => {
     if (tab !== "map" || mapData !== null || !roundNum) return
-    fetch(`${API_BASE}/api/telemetry/2026/${roundNum}/map`)
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null).then(setMapData)
+    lazyFetch(`${API_BASE}/api/telemetry/2026/${roundNum}/map`, setMapData)
   }, [tab, roundNum, mapData])
 
   const trackImage = selectedEvent
@@ -229,21 +243,21 @@ export default function TelemetryClient({
           )}
 
           {tab === "laptimes" && (
-            lapTimes
-              ? <LapTimesChart data={lapTimes} />
-              : <Spinner />
+            lapTimes === null ? <Spinner /> :
+            lapTimes ? <LapTimesChart data={lapTimes} /> :
+            <EmptyState message="Lap time data not available for this round." />
           )}
 
           {tab === "positions" && (
-            positions
-              ? <PositionChart data={positions} />
-              : <Spinner />
+            positions === null ? <Spinner /> :
+            positions ? <PositionChart data={positions} /> :
+            <EmptyState message="Position data not available for this round." />
           )}
 
           {tab === "gaps" && (
-            gaps
-              ? <GapChart data={gaps} />
-              : <Spinner />
+            gaps === null ? <Spinner /> :
+            gaps ? <GapChart data={gaps} /> :
+            <EmptyState message="Gap data not available for this round." />
           )}
 
           {tab === "tyres" && (
@@ -259,21 +273,21 @@ export default function TelemetryClient({
           )}
 
           {tab === "sectors" && (
-            sectors
-              ? <SectorTimes data={sectors} />
-              : <Spinner />
+            sectors === null ? <Spinner /> :
+            sectors ? <SectorTimes data={sectors} /> :
+            <EmptyState message="Sector data not available for this round." />
           )}
 
           {tab === "speed" && (
-            speed
-              ? <SpeedTrace drivers={speed.drivers} />
-              : <Spinner />
+            speed === null ? <Spinner /> :
+            speed ? <SpeedTrace drivers={speed.drivers} /> :
+            <EmptyState message="Speed trace data not available for this round." />
           )}
 
           {tab === "map" && (
-            mapData
-              ? <CircuitMap data={mapData} />
-              : <Spinner />
+            mapData === null ? <Spinner /> :
+            mapData ? <CircuitMap data={mapData} /> :
+            <EmptyState message="Circuit map data not available for this round." />
           )}
         </>
       )}
