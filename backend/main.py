@@ -1,6 +1,7 @@
 import secrets
 import math
 import threading
+import json
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
@@ -67,6 +68,7 @@ async def lifespan(app: FastAPI):
         for i in range(1, 6):
             conn.execute(text(f"ALTER TABLE event ADD COLUMN IF NOT EXISTS session{i}_name VARCHAR"))
             conn.execute(text(f"ALTER TABLE event ADD COLUMN IF NOT EXISTS session{i}_date TIMESTAMP"))
+        conn.execute(text("ALTER TABLE prediction ADD COLUMN IF NOT EXISTS score_breakdown TEXT"))
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -268,18 +270,28 @@ def score_race(event_id: int, session: Session = Depends(get_session)):
 
     predictions = session.exec(select(Prediction).where(Prediction.event_id == event_id)).all()
     for pred in predictions:
-        points = 0
-        if pred.first_place == actual_p1: points += 10
-        if pred.second_place == actual_p2: points += 10
-        if pred.third_place == actual_p3: points += 10
-        if pred.fourth_place and pred.fourth_place == actual_p4: points += 8
-        if pred.fifth_place and pred.fifth_place == actual_p5: points += 6
-        if pred.fastest_lap == actual_fastest: points += 5
-        if pred.pole_position == actual_pole: points += 5
-        if pred.dnf_driver and pred.dnf_driver in actual_dnfs: points += 5
-        if pred.safety_car is not None and pred.safety_car == actual_safety_car: points += 5
+        p1_pts  = 10 if pred.first_place == actual_p1 else 0
+        p2_pts  = 10 if pred.second_place == actual_p2 else 0
+        p3_pts  = 10 if pred.third_place == actual_p3 else 0
+        p4_pts  = 8  if pred.fourth_place and pred.fourth_place == actual_p4 else 0
+        p5_pts  = 6  if pred.fifth_place and pred.fifth_place == actual_p5 else 0
+        fl_pts  = 5  if pred.fastest_lap == actual_fastest else 0
+        pol_pts = 5  if pred.pole_position == actual_pole else 0
+        dnf_pts = 5  if pred.dnf_driver and pred.dnf_driver in actual_dnfs else 0
+        sc_pts  = 5  if pred.safety_car is not None and pred.safety_car == actual_safety_car else 0
 
-        pred.points_earned = points
+        pred.points_earned = p1_pts + p2_pts + p3_pts + p4_pts + p5_pts + fl_pts + pol_pts + dnf_pts + sc_pts
+        pred.score_breakdown = json.dumps({
+            "pole": {"pick": pred.pole_position, "actual": actual_pole, "pts": pol_pts},
+            "p1":   {"pick": pred.first_place,   "actual": actual_p1,  "pts": p1_pts},
+            "p2":   {"pick": pred.second_place,  "actual": actual_p2,  "pts": p2_pts},
+            "p3":   {"pick": pred.third_place,   "actual": actual_p3,  "pts": p3_pts},
+            "p4":   {"pick": pred.fourth_place,  "actual": actual_p4,  "pts": p4_pts} if pred.fourth_place else None,
+            "p5":   {"pick": pred.fifth_place,   "actual": actual_p5,  "pts": p5_pts} if pred.fifth_place else None,
+            "fl":   {"pick": pred.fastest_lap,   "actual": actual_fastest, "pts": fl_pts},
+            "dnf":  {"pick": pred.dnf_driver,    "actual": ", ".join(actual_dnfs), "pts": dnf_pts} if pred.dnf_driver else None,
+            "sc":   {"pick": "Yes" if pred.safety_car else "No", "actual": "Yes" if actual_safety_car else "No", "pts": sc_pts} if pred.safety_car is not None else None,
+        })
         session.add(pred)
 
         user = session.get(User, pred.user_id)

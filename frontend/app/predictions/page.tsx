@@ -6,6 +6,12 @@ import NavHeader from "@/components/NavHeader"
 import type { F1Event } from "../dashboard/page"
 import { TEAM_COLORS } from "@/lib/design"
 
+interface BreakdownEntry {
+  pick: string | null
+  actual: string | null
+  pts: number
+}
+
 interface Prediction {
   id: number
   event_id: number
@@ -19,6 +25,7 @@ interface Prediction {
   pole_position: string | null
   safety_car: boolean | null
   points_earned: number
+  score_breakdown: string | null  // JSON string keyed by slot
 }
 
 interface RaceCard {
@@ -38,15 +45,69 @@ const DRIVER_PICK_LABELS: { key: keyof Prediction; label: string }[] = [
   { key: "dnf_driver", label: "DNF" },
 ]
 
-function DriverChip({ code, label }: { code: string | null; label: string }) {
+const BREAKDOWN_ORDER = [
+  { key: "pole", label: "POLE", maxPts: 5 },
+  { key: "p1",   label: "P1",   maxPts: 10 },
+  { key: "p2",   label: "P2",   maxPts: 10 },
+  { key: "p3",   label: "P3",   maxPts: 10 },
+  { key: "fl",   label: "FL",   maxPts: 5 },
+  { key: "p4",   label: "P4",   maxPts: 8 },
+  { key: "p5",   label: "P5",   maxPts: 6 },
+  { key: "dnf",  label: "DNF",  maxPts: 5 },
+  { key: "sc",   label: "SC",   maxPts: 5 },
+]
+
+function ScoreBreakdown({ raw }: { raw: string }) {
+  let data: Record<string, BreakdownEntry | null> = {}
+  try { data = JSON.parse(raw) } catch { return null }
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-border-subtle">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0">
+        {BREAKDOWN_ORDER.map(({ key, label }) => {
+          const entry = data[key]
+          if (!entry) return null
+          const scored = entry.pts > 0
+          return (
+            <div key={key} className="flex items-center justify-between py-1.5 border-b border-border-subtle last:border-0">
+              {/* Label */}
+              <span className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest w-8 shrink-0">
+                {label}
+              </span>
+
+              {/* Pick → Actual */}
+              <div className="flex items-center gap-1.5 flex-1 min-w-0 mx-3">
+                <DriverChip code={entry.pick} label="" compact />
+                <span className="text-text-dim text-[0.55rem]">→</span>
+                <DriverChip code={entry.actual} label="" compact />
+              </div>
+
+              {/* Points */}
+              <span
+                className="text-[0.6rem] font-(family-name:--font-orbitron) font-bold tabular-nums shrink-0"
+                style={{ color: scored ? "#4ade80" : "#444" }}
+              >
+                {scored ? `+${entry.pts}` : "—"}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function DriverChip({ code, label, compact }: { code: string | null; label: string; compact?: boolean }) {
   const color = code ? (TEAM_COLORS[code] ?? "#555") : "#333"
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[0.5rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-        {label}
-      </span>
+    <div className={`flex flex-col items-center gap-0.5 ${compact ? "" : ""}`}>
+      {!compact && (
+        <span className="text-[0.5rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+          {label}
+        </span>
+      )}
       <span
-        className="font-(family-name:--font-f1-regular) text-xs px-1.5 py-0.5 rounded-sm"
+        className={`font-(family-name:--font-f1-regular) ${compact ? "text-[0.65rem]" : "text-xs"} px-1.5 py-0.5 rounded-sm`}
         style={{
           color: code ? color : "#444",
           backgroundColor: code ? `${color}18` : "transparent",
@@ -196,26 +257,25 @@ export default function PredictionsPage() {
                     </div>
                   </div>
 
-                  {/* Picks row */}
-                  <div className="flex items-center gap-3 sm:gap-5 px-4 pb-4 flex-wrap">
-                    {DRIVER_PICK_LABELS.map(({ key, label }) => (
-                      <DriverChip
-                        key={key}
-                        code={p[key] as string | null}
-                        label={label}
-                      />
-                    ))}
-                    {/* Safety Car chip */}
-                    {p.safety_car !== null && (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <span className="text-[0.5rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">SC</span>
-                        <span className="font-(family-name:--font-dm-mono) text-xs px-1.5 py-0.5 rounded-sm"
-                          style={{ color: "#aaaaaa", backgroundColor: "#aaaaaa18", border: "1px solid #aaaaaa33" }}>
-                          {p.safety_car ? "Yes" : "No"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Scored: per-field breakdown. Others: chip row */}
+                  {status === "scored" && p.score_breakdown ? (
+                    <ScoreBreakdown raw={p.score_breakdown} />
+                  ) : (
+                    <div className="flex items-center gap-3 sm:gap-5 px-4 pb-4 flex-wrap">
+                      {DRIVER_PICK_LABELS.map(({ key, label }) => (
+                        <DriverChip key={key} code={p[key] as string | null} label={label} />
+                      ))}
+                      {p.safety_car !== null && (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[0.5rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">SC</span>
+                          <span className="font-(family-name:--font-dm-mono) text-xs px-1.5 py-0.5 rounded-sm"
+                            style={{ color: "#aaaaaa", backgroundColor: "#aaaaaa18", border: "1px solid #aaaaaa33" }}>
+                            {p.safety_car ? "Yes" : "No"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

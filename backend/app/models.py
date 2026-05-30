@@ -45,6 +45,7 @@ class Prediction(SQLModel, table=True):
     pole_position: Optional[str] = None
     safety_car: Optional[bool] = None
     points_earned: int = Field(default=0)
+    score_breakdown: Optional[str] = None  # JSON string, populated at scoring time
 
 
 class Group(SQLModel, table=True):
