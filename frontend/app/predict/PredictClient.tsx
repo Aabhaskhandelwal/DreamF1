@@ -23,10 +23,9 @@ const DRIVER_SLOTS: PredictionSlot[] = [
   { key: "dnf_driver",    label: "DNF Driver",        placeholder: "DNF" },
 ]
 
-// Position slots that must not share a driver with each other
+// Only finishing positions must be unique — pole and fastest lap can share a driver with any slot
 const POSITION_KEYS = new Set<keyof FormState>([
-  "pole_position", "first_place", "second_place", "third_place",
-  "fourth_place", "fifth_place", "fastest_lap",
+  "first_place", "second_place", "third_place", "fourth_place", "fifth_place",
 ])
 
 interface FormState {
