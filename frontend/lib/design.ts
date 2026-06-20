@@ -49,3 +49,22 @@ export const DRIVERS_2026 = [
 ] as const; //so typescipty infers a literal union type
 
 export type DriverCode = (typeof DRIVERS_2026)[number];
+
+// Team colours keyed by the canonical slug the backend emits (team_slug).
+export const TEAM_SLUG_COLORS: Record<string, string> = {
+  mercedes: "#00D7B6",
+  ferrari: "#ED1131",
+  mclaren: "#F47600",
+  redbull: "#4781D7",
+  alpine: "#00A1E8",
+  astonmartin: "#229971",
+  williams: "#1868DB",
+  racingbulls: "#6C98FF",
+  audi: "#F50537",
+  haas: "#9C9FA2",
+  cadillac: "#909090",
+};
+
+export function teamColor(slug: string | null | undefined): string {
+  return (slug && TEAM_SLUG_COLORS[slug]) || "#888888";
+}

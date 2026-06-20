@@ -2,6 +2,7 @@ import secrets
 import math
 import threading
 import json
+import time
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
@@ -773,3 +774,184 @@ def get_circuit_history(year: int, round_num: int):
         })
     except Exception as e:
         return {"_error": str(e)}
+
+
+# --- Championship standings (Ergast / Jolpica, current season only) ---
+
+_STANDINGS_TTL = 1800  # seconds — standings only move after a race
+_standings_cache: dict[int, tuple[float, Any]] = {}
+
+
+def _ef(v):
+    """Coerce an Ergast cell to float, or None if missing/NaN."""
+    try:
+        if v is None:
+            return None
+        f = float(v)
+        return None if math.isnan(f) else f
+    except Exception:
+        return None
+
+
+def _efd(v, default: float) -> float:
+    """Like _ef but always returns a number (default when missing)."""
+    r = _ef(v)
+    return default if r is None else r
+
+
+def _is_finish(status: str) -> bool:
+    return status == "Finished" or status.startswith("+")
+
+
+def _team_slug(name: str) -> str:
+    """Canonical key for a constructor — drives team colours and logo filenames."""
+    n = (name or "").lower()
+    if "mercedes" in n: return "mercedes"
+    if "ferrari" in n: return "ferrari"
+    if "mclaren" in n: return "mclaren"
+    if "red bull" in n or "redbull" in n: return "redbull"
+    if "alpine" in n: return "alpine"
+    if "aston" in n: return "astonmartin"
+    if "williams" in n: return "williams"
+    if "racing bull" in n or "alphatauri" in n or n.strip() in ("rb", "rb f1 team"): return "racingbulls"
+    if "haas" in n: return "haas"
+    if "audi" in n or "sauber" in n: return "audi"
+    if "cadillac" in n: return "cadillac"
+    return n.replace(" ", "")
+
+
+def _compute_standings(year: int):
+    from fastf1.ergast import Ergast
+    erg = Ergast()
+
+    ds_content = getattr(erg.get_driver_standings(season=year), "content", None)
+    if not ds_content:
+        return {"_error": f"No driver standings for {year} yet"}
+    ds = ds_content[0]
+
+    cs_content = getattr(erg.get_constructor_standings(season=year), "content", None)
+    cs = cs_content[0] if cs_content else None
+
+    # Rich per-driver / per-constructor aggregation from season race results
+    dagg: dict[str, dict] = {}
+    cagg: dict[str, dict] = {}
+    rounds_pts: dict[str, list] = {}
+
+    def _cbucket(name):
+        return cagg.setdefault(name, dict(podiums=0, onetwo=0, poles=0, fl=0))
+
+    try:
+        rr = erg.get_race_results(season=year, limit=1000)
+        for race_df in (getattr(rr, "content", None) or []):
+            if "constructorName" in race_df.columns:
+                for cons_name, grp in race_df.groupby("constructorName"):
+                    positions = [p for p in (_ef(x) for x in grp["position"]) if p is not None]
+                    c = _cbucket(cons_name)
+                    c["podiums"] += sum(1 for p in positions if p <= 3)
+                    if 1 in positions and 2 in positions:
+                        c["onetwo"] += 1
+            for _, row in race_df.iterrows():
+                code = row.get("driverCode") or ""
+                if not code:
+                    continue
+                pos = _ef(row.get("position"))
+                grid = _ef(row.get("grid"))
+                status = str(row.get("status") or "")
+                flr = _ef(row.get("fastestLapRank"))
+                pts = _efd(row.get("points"), 0.0)
+                cons = row.get("constructorName") or ""
+                a = dagg.setdefault(code, dict(podiums=0, poles=0, fl=0, dnf=0,
+                                               best=None, finishes=[], races=0, team=cons))
+                a["races"] += 1
+                a["team"] = cons
+                if pos is not None:
+                    a["finishes"].append(pos)
+                    a["best"] = pos if a["best"] is None else min(a["best"], pos)
+                    if pos <= 3:
+                        a["podiums"] += 1
+                if grid == 1:
+                    a["poles"] += 1
+                    _cbucket(cons)["poles"] += 1
+                if flr == 1:
+                    a["fl"] += 1
+                    _cbucket(cons)["fl"] += 1
+                if not _is_finish(status):
+                    a["dnf"] += 1
+                rounds_pts.setdefault(code, []).append(pts)
+    except Exception:
+        pass
+
+    # Driver rows (ds already sorted by championship position)
+    drivers = []
+    prev_pts = None
+    leader_pts = _efd(ds.iloc[0]["points"], 0.0) if len(ds) else 0.0
+    for _, row in ds.iterrows():
+        code = row.get("driverCode") or ""
+        pts = _efd(row.get("points"), 0.0)
+        a = dagg.get(code, {})
+        cons_names = row.get("constructorNames")
+        team = (cons_names[0] if isinstance(cons_names, (list, tuple)) and len(cons_names)
+                else a.get("team") or "")
+        finishes = a.get("finishes", [])
+        drivers.append({
+            "position": int(_efd(row.get("position"), 0)),
+            "code": code,
+            "driver": f"{row.get('givenName', '')} {row.get('familyName', '')}".strip(),
+            "team": team,
+            "team_slug": _team_slug(team),
+            "points": pts,
+            "wins": int(_efd(row.get("wins"), 0)),
+            "podiums": a.get("podiums", 0),
+            "poles": a.get("poles", 0),
+            "fastest_laps": a.get("fl", 0),
+            "dnfs": a.get("dnf", 0),
+            "best_finish": int(a["best"]) if a.get("best") else None,
+            "avg_finish": round(sum(finishes) / len(finishes), 1) if finishes else None,
+            "races": a.get("races", 0),
+            "points_per_race": round(pts / a["races"], 1) if a.get("races") else None,
+            "last3_points": sum(rounds_pts.get(code, [])[-3:]),
+            "gap_to_leader": round(leader_pts - pts),
+            "gap_to_next": round(prev_pts - pts) if prev_pts is not None else 0,
+        })
+        prev_pts = pts
+
+    # Constructor rows
+    constructors = []
+    if cs is not None:
+        prev_cpts = None
+        leader_cpts = _efd(cs.iloc[0]["points"], 0.0) if len(cs) else 0.0
+        for _, row in cs.iterrows():
+            name = row.get("constructorName") or ""
+            cpts = _efd(row.get("points"), 0.0)
+            c = cagg.get(name, {})
+            constructors.append({
+                "position": int(_efd(row.get("position"), 0)),
+                "team": name,
+                "team_slug": _team_slug(name),
+                "points": cpts,
+                "wins": int(_efd(row.get("wins"), 0)),
+                "podiums": c.get("podiums", 0),
+                "one_twos": c.get("onetwo", 0),
+                "poles": c.get("poles", 0),
+                "fastest_laps": c.get("fl", 0),
+                "gap_to_leader": round(leader_cpts - cpts),
+                "gap_to_next": round(prev_cpts - cpts) if prev_cpts is not None else 0,
+            })
+            prev_cpts = cpts
+
+    return _clean({"year": year, "drivers": drivers, "constructors": constructors})
+
+
+@app.get("/api/standings/{year}")
+def get_standings(year: int):
+    now = time.time()
+    hit = _standings_cache.get(year)
+    if hit and hit[0] > now:
+        return hit[1]
+    try:
+        payload = _compute_standings(year)
+    except Exception as e:
+        return {"_error": str(e)}
+    if isinstance(payload, dict) and "_error" not in payload:
+        _standings_cache[year] = (now + _STANDINGS_TTL, payload)
+    return payload

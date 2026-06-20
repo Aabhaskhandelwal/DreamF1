@@ -2,6 +2,7 @@ import Image from "next/image"
 import NextRaceCard from "./NextRaceCard"
 import CircuitHistory from "./CircuitHistory"
 import CirclesOverview from "./CirclesOverview"
+import StandingsCard from "./StandingsCard"
 import NavHeader from "@/components/NavHeader"
 import { FLAG_CODES, getTrackImage } from "@/lib/trackData"
 
@@ -96,6 +97,11 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Championship standings ── */}
+      <div className="mt-4">
+        <StandingsCard />
       </div>
 
       {/* ── Season metrics row ── */}
