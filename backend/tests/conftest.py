@@ -1,9 +1,10 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-# Intercept fastf1 + pandas before main.py imports them at module level
+# Intercept heavy data deps before main.py imports them at module level
 sys.modules["fastf1"] = MagicMock()
 sys.modules["pandas"] = MagicMock()
+sys.modules["numpy"] = MagicMock()
 
 import pytest
 from sqlalchemy.pool import StaticPool
