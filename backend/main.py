@@ -840,6 +840,78 @@ def get_race_pace(year: int, round_num: int):
         raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
 
 
+@app.get("/api/telemetry/{year}/{round_num}/compare/{d1}/{d2}")
+def get_compare(year: int, round_num: int, d1: str, d2: str):
+    """Overlay two drivers' fastest-lap telemetry channels + a time delta (d2 vs d1)."""
+    d1, d2 = d1.upper(), d2.upper()
+    try:
+        race = _load_session(year, round_num, 'R', telemetry=True)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Session data not available yet")
+
+    try:
+        if race.results is None or race.results.empty:
+            raise HTTPException(status_code=404, detail="No race results available")
+
+        drivers_out: dict[str, Any] = {}
+        laps: dict[str, Any] = {}
+        for code in (d1, d2):
+            lap = race.laps.pick_driver(code).pick_fastest()
+            if lap is None or (hasattr(lap, "empty") and lap.empty):
+                raise HTTPException(status_code=404, detail=f"No fastest lap found for {code}")
+            laps[code] = lap
+
+            tel = lap.get_telemetry()
+            want = [c for c in ['Distance', 'Speed', 'Throttle', 'Brake', 'nGear', 'DRS'] if c in tel.columns]
+            tel = tel[want].dropna(subset=['Distance'])
+            step = max(1, len(tel) // 400)
+            t = tel.iloc[::step]
+
+            lt = lap['LapTime']
+            lap_sec = round(lt.total_seconds(), 3) if pd.notna(lt) and hasattr(lt, 'total_seconds') else None
+            comp = lap.get('Compound')
+            team = str(lap['Team']) if pd.notna(lap.get('Team')) else ''
+
+            drivers_out[code] = {
+                "team_slug": _team_slug(team),
+                "lap_time": lap_sec,
+                "compound": str(comp) if comp is not None and pd.notna(comp) else None,
+                "distance": t['Distance'].round(1).tolist(),
+                "speed": t['Speed'].round(1).tolist() if 'Speed' in t.columns else [],
+                "throttle": t['Throttle'].round(0).tolist() if 'Throttle' in t.columns else [],
+                "brake": [int(bool(b)) for b in t['Brake']] if 'Brake' in t.columns else [],
+                "gear": [int(g) if pd.notna(g) else None for g in t['nGear']] if 'nGear' in t.columns else [],
+                "drs": [1 if (pd.notna(v) and int(v) in (10, 12, 14)) else 0 for v in t['DRS']] if 'DRS' in t.columns else [],
+            }
+
+        # Time delta of d2 relative to d1 along d1's fastest lap (positive = d2 slower)
+        delta_payload = None
+        try:
+            from fastf1.utils import delta_time
+            dt, ref, _cmp = delta_time(laps[d1], laps[d2])
+            ref_dist = ref['Distance']
+            step = max(1, len(dt) // 400)
+            delta_payload = {
+                "distance": ref_dist.iloc[::step].round(1).tolist(),
+                "delta": [round(float(x), 3) if pd.notna(x) else None for x in dt.iloc[::step]],
+            }
+        except Exception:
+            delta_payload = None
+
+        return _clean({
+            "session": race.event['EventName'],
+            "round": round_num,
+            "d1": d1,
+            "d2": d2,
+            "drivers": drivers_out,
+            "delta": delta_payload,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
 @app.get("/api/telemetry/{year}/{round_num}/weather")
 def get_weather(year: int, round_num: int):
     """Weather across the race — track/air temp, humidity, wind, rainfall over time."""
