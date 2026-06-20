@@ -703,12 +703,11 @@ def get_circuit_map(year: int, round_num: int):
 
 @app.get("/api/circuit_history/{year}/{round_num}")
 def get_circuit_history(year: int, round_num: int):
-    """Return previous year's race results at the same round number (circuit proxy)."""
-    prev_year = year - 1
+    """Return the race result for the given year & round (used for the last-race recap)."""
     try:
-        hist = _load_session(prev_year, round_num, 'R')
+        hist = _load_session(year, round_num, 'R')
     except Exception:
-        return {"_error": f"No data for {prev_year} Round {round_num}"}
+        return {"_error": f"No data for {year} Round {round_num}"}
 
     try:
         results = hist.results
@@ -761,7 +760,7 @@ def get_circuit_history(year: int, round_num: int):
             pass
 
         return _clean({
-            "year": prev_year,
+            "year": year,
             "event_name": event_name,
             "winner": winner,
             "winner_team": winner_team,

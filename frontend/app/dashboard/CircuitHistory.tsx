@@ -64,9 +64,9 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
   if (!data || data._error) {
     return (
       <div className="glass-card h-full p-5 flex flex-col justify-center items-center gap-2 min-h-[220px]">
-        <p className="section-label text-text-dim">Last Year</p>
+        <p className="section-label text-text-dim">Last Race</p>
         <p className="text-text-dim text-xs font-(family-name:--font-dm-mono) text-center leading-relaxed">
-          No historical data available for this circuit.
+          Race result not available yet.
         </p>
       </div>
     )
@@ -119,7 +119,7 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
   return (
     <div className="glass-card h-full p-5 flex flex-col gap-4">
       <div>
-        <p className="section-label text-text-dim mb-1.5">{data.year} · Same Circuit</p>
+        <p className="section-label text-f1-red mb-1.5">Last Race · {data.year}</p>
         <p className="font-(family-name:--font-orbitron) text-sm font-bold text-text-primary leading-snug line-clamp-2">
           {data.event_name ?? "—"}
         </p>
