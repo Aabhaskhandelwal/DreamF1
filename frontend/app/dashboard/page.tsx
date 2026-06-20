@@ -1,7 +1,9 @@
+import Image from "next/image"
 import NextRaceCard from "./NextRaceCard"
-import SeasonMetrics from "./SeasonMetrics"
+import CircuitHistory from "./CircuitHistory"
 import CirclesOverview from "./CirclesOverview"
 import NavHeader from "@/components/NavHeader"
+import { FLAG_CODES, getTrackImage } from "@/lib/trackData"
 
 export const dynamic = "force-dynamic"
 
@@ -41,19 +43,24 @@ export default async function DashboardPage() {
   const { events, backendDown } = await getSchedule()
   const today = new Date().toISOString().split("T")[0]
 
-  // Use date-based filtering — is_completed only flips after admin scoring,
-  // so unscored past races would incorrectly appear as "upcoming" otherwise.
+  // Date-based filtering — is_completed only flips after admin scoring
   const nextRace = events.find((e) => e.event_date >= today) ?? null
   const upcomingAfterNext = events.filter((e) => e.event_date > (nextRace?.event_date ?? today))
   const completedCount = events.filter((e) => e.event_date < today).length
   const remainingCount = events.filter((e) => e.event_date >= today).length
 
+  const seasonMetrics = [
+    { value: events.length, label: "Total Rounds" },
+    { value: completedCount, label: "Completed" },
+    { value: remainingCount, label: "Remaining" },
+  ]
+
   return (
-    <div className="min-h-screen px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
+    <div className="min-h-screen px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto">
       <NavHeader active="dashboard" />
 
       {backendDown && (
-        <div className="glass-card p-4 border-l-2 border-f1-red">
+        <div className="glass-card mt-6 p-4 border-l-2 border-f1-red">
           <p className="text-sm font-(family-name:--font-dm-mono) text-text-muted">
             Backend offline — start it with{" "}
             <code className="text-f1-red">uvicorn main:app --reload</code> in{" "}
@@ -62,15 +69,88 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {nextRace && <NextRaceCard event={nextRace} upcomingRaces={upcomingAfterNext} />}
+      {/* ── Bento row 1: hero (2/3) + circuit history (1/3) ── */}
+      <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          {nextRace ? (
+            <NextRaceCard event={nextRace} />
+          ) : (
+            <div className="glass-card p-8 flex items-center justify-center min-h-[200px]">
+              <p className="section-label text-text-dim">Season Complete</p>
+            </div>
+          )}
+        </div>
 
-      <SeasonMetrics
-        total={events.length}
-        completed={completedCount}
-        remaining={remainingCount}
-      />
+        <div className="lg:col-span-1">
+          {nextRace ? (
+            <CircuitHistory year={2026} roundNum={nextRace.round_number} />
+          ) : (
+            <div className="glass-card h-full p-5 flex items-center justify-center min-h-[200px]">
+              <p className="text-text-dim text-xs font-(family-name:--font-dm-mono)">—</p>
+            </div>
+          )}
+        </div>
+      </div>
 
-      <CirclesOverview />
+      {/* ── Season metrics row ── */}
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        {seasonMetrics.map(({ value, label }) => (
+          <div key={label} className="glass-card p-3 sm:p-5 flex flex-col gap-1">
+            <span className="metric-value">{value}</span>
+            <span className="metric-label">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── My Circles ── */}
+      <div className="mt-4">
+        <CirclesOverview />
+      </div>
+
+      {/* ── Upcoming races strip ── */}
+      {upcomingAfterNext.length > 0 && (
+        <div className="mt-6">
+          <p className="section-label mb-3">Up Next</p>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {upcomingAfterNext.map((race) => {
+              const flag = FLAG_CODES[race.country] ?? "UN"
+              const thumb = getTrackImage(race.country, race.event_name)
+              const raceDate = race.session5_date
+                ? new Date(race.session5_date.endsWith("Z") ? race.session5_date : race.session5_date + "Z")
+                : new Date(race.event_date + "T12:00:00Z")
+              const date = raceDate.toLocaleDateString("en-GB", {
+                day: "numeric", month: "short", timeZone: "UTC",
+              })
+              return (
+                <div key={race.id} className="glass-card shrink-0 w-52 p-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://flagsapi.com/${flag}/flat/32.png`}
+                      alt={race.country}
+                      className="h-4 w-auto rounded-sm opacity-80"
+                    />
+                    <span className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+                      R{race.round_number}
+                    </span>
+                  </div>
+                  {thumb && (
+                    <div className="relative h-24 opacity-50">
+                      <Image src={thumb} alt={race.country} fill className="object-contain" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-text-secondary text-xs font-(family-name:--font-dm-mono) leading-snug line-clamp-1">
+                      {race.event_name}
+                    </p>
+                    <p className="text-text-dim text-[0.6rem] font-(family-name:--font-dm-mono) mt-0.5">{date}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -70,15 +70,17 @@ class UserCreate(BaseModel):
 
 
 class PredictionCreate(BaseModel):
+    # Required picks
     pole_position: str
     first_place: str
     second_place: str
     third_place: str
-    fourth_place: str
-    fifth_place: str
     fastest_lap: str
-    dnf_driver: str
-    safety_car: bool
+    # Optional picks (Golden Rule 4 — never required)
+    fourth_place: Optional[str] = None
+    fifth_place: Optional[str] = None
+    dnf_driver: Optional[str] = None
+    safety_car: Optional[bool] = None
 
 
 class GroupCreate(BaseModel):
