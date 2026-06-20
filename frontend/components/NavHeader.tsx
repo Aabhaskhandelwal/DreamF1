@@ -48,12 +48,12 @@ export default function NavHeader({ active }: { active?: NavKey }) {
             width={80}
             height={27}
             priority
-            className="w-14 sm:w-20 h-auto"
+            className="w-12 sm:w-16 h-auto"
           />
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden sm:flex items-center gap-6 text-sm font-(family-name:--font-dm-mono) uppercase tracking-wider">
+        <nav className="hidden sm:flex items-center gap-5 text-[0.7rem] font-(family-name:--font-dm-mono) uppercase tracking-wider">
           {LINKS.map(({ href, label, key }) => (
             <Link
               key={key}
@@ -69,11 +69,11 @@ export default function NavHeader({ active }: { active?: NavKey }) {
           ))}
 
           {loggedIn ? (
-            <div className="flex items-center gap-3 pl-3 border-l border-[#1e1e1e]">
+            <div className="flex items-center gap-2.5 pl-2.5 border-l border-[#1e1e1e]">
               {username && (
                 <span
-                  className="flex items-center justify-center w-6 h-6 rounded-full bg-f1-red
-                             text-white text-[0.6rem] font-bold shrink-0"
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-f1-red
+                             text-white text-[0.55rem] font-bold shrink-0"
                   title={username}
                 >
                   {username.charAt(0).toUpperCase()}
@@ -89,7 +89,7 @@ export default function NavHeader({ active }: { active?: NavKey }) {
           ) : (
             <Link
               href="/login"
-              className="px-3 py-1.5 bg-f1-red text-white text-xs
+              className="px-3 py-1 bg-f1-red text-white text-[0.7rem]
                          font-(family-name:--font-dm-mono) uppercase tracking-widest
                          hover:bg-f1-red-dark transition-colors shrink-0"
             >
