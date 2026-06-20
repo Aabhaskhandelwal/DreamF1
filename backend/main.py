@@ -40,8 +40,9 @@ _session_locks: dict[tuple, threading.Lock] = {}
 _cache_registry_lock = threading.Lock()
 
 
-def _load_session(year: int, round_num: int, session_type: str, telemetry: bool = False) -> Any:
-    key = (year, round_num, session_type, telemetry)
+def _load_session(year: int, round_num: int, session_type: str,
+                  telemetry: bool = False, weather: bool = False) -> Any:
+    key = (year, round_num, session_type, telemetry, weather)
     if key in _session_cache:
         return _session_cache[key]
     with _cache_registry_lock:
@@ -52,7 +53,7 @@ def _load_session(year: int, round_num: int, session_type: str, telemetry: bool 
         if key in _session_cache:
             return _session_cache[key]
         session = ff1.get_session(year, round_num, session_type)
-        session.load(laps=True, telemetry=telemetry, weather=False)
+        session.load(laps=True, telemetry=telemetry, weather=weather)
         _session_cache[key] = session
     return _session_cache[key]
 
@@ -824,7 +825,7 @@ def get_race_pace(year: int, round_num: int):
 def get_circuit_history(year: int, round_num: int):
     """Return the race result for the given year & round (used for the last-race recap)."""
     try:
-        hist = _load_session(year, round_num, 'R')
+        hist = _load_session(year, round_num, 'R', weather=True)
     except Exception:
         return {"_error": f"No data for {year} Round {round_num}"}
 
@@ -861,16 +862,47 @@ def get_circuit_history(year: int, round_num: int):
         except Exception:
             pass
 
+        # Podium — top 3 with team slug for colours/logos
+        podium = []
+        for i in range(min(3, len(results))):
+            r = results.iloc[i]
+            code = str(r['Abbreviation']) if pd.notna(r.get('Abbreviation')) else None
+            if not code:
+                continue
+            team = str(r['TeamName']) if 'TeamName' in results.columns and pd.notna(r.get('TeamName')) else ""
+            podium.append({"position": i + 1, "code": code, "team_slug": _team_slug(team)})
+
         sc = bool(hist.laps['TrackStatus'].dropna().str.contains('4').any())
         dnf_count = int((~results['Status'].str.contains(r'Finished|\+', regex=True, na=False)).sum())
 
         total_laps = None
         try:
-            nl = winner_row.get('NumberOfLaps')
+            nl = winner_row.get('Laps')
+            if nl is None or not pd.notna(nl):
+                nl = winner_row.get('NumberOfLaps')
             if nl is not None and pd.notna(nl):
                 total_laps = int(nl)
         except Exception:
             pass
+
+        # Weather summary (more FastF1 data)
+        weather = None
+        try:
+            w = hist.weather_data
+            if w is not None and not w.empty:
+                def _wmean(col):
+                    return round(float(w[col].mean()), 1) if col in w.columns and w[col].notna().any() else None
+                weather = {
+                    "air_temp": _wmean('AirTemp'),
+                    "track_temp": _wmean('TrackTemp'),
+                    "track_temp_max": (round(float(w['TrackTemp'].max()), 1)
+                                       if 'TrackTemp' in w.columns and w['TrackTemp'].notna().any() else None),
+                    "humidity": _wmean('Humidity'),
+                    "wind_speed": _wmean('WindSpeed'),
+                    "rain": bool(w['Rainfall'].any()) if 'Rainfall' in w.columns else False,
+                }
+        except Exception:
+            weather = None
 
         event_name = None
         try:
@@ -883,12 +915,15 @@ def get_circuit_history(year: int, round_num: int):
             "event_name": event_name,
             "winner": winner,
             "winner_team": winner_team,
+            "winner_team_slug": _team_slug(winner_team or ""),
+            "podium": podium,
             "pole": pole,
             "fastest_lap_driver": fl_driver,
             "fastest_lap_time": fl_time_str,
             "safety_car": sc,
             "dnf_count": dnf_count,
             "total_laps": total_laps,
+            "weather": weather,
         })
     except Exception as e:
         return {"_error": str(e)}
