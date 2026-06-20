@@ -48,7 +48,7 @@ export default function DriverAvatar({
       width={size}
       height={size}
       onError={() => setFailed(true)}
-      className="rounded-full object-cover shrink-0"
+      className="rounded-full object-cover object-top shrink-0"
       style={{ width: size, height: size, border: `1.5px solid ${ring}`, background: "#0f0f0f" }}
     />
   )
