@@ -821,6 +821,118 @@ def get_race_pace(year: int, round_num: int):
         raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
 
 
+@app.get("/api/telemetry/{year}/{round_num}/weather")
+def get_weather(year: int, round_num: int):
+    """Weather across the race — track/air temp, humidity, wind, rainfall over time."""
+    try:
+        race = _load_session(year, round_num, 'R', weather=True)
+        w = race.weather_data
+        if w is None or w.empty:
+            raise HTTPException(status_code=404, detail="No weather data available")
+
+        def col(c):
+            return w[c] if c in w.columns else None
+
+        if 'Time' in w.columns:
+            mins = (w['Time'].dt.total_seconds() / 60.0).round(1).tolist()
+        else:
+            mins = list(range(len(w)))
+
+        step = max(1, len(w) // 120)
+        idx = list(range(0, len(w), step))
+
+        def series(c):
+            cc = col(c)
+            if cc is None:
+                return None
+            vals = cc.tolist()
+            return [round(float(vals[i]), 1) if pd.notna(vals[i]) else None for i in idx]
+
+        def stat(c, fn):
+            cc = col(c)
+            if cc is None or not cc.notna().any():
+                return None
+            return round(float(fn(cc)), 1)
+
+        summary = {
+            "track_temp_min": stat('TrackTemp', lambda s: s.min()),
+            "track_temp_max": stat('TrackTemp', lambda s: s.max()),
+            "track_temp_avg": stat('TrackTemp', lambda s: s.mean()),
+            "air_temp_min": stat('AirTemp', lambda s: s.min()),
+            "air_temp_max": stat('AirTemp', lambda s: s.max()),
+            "air_temp_avg": stat('AirTemp', lambda s: s.mean()),
+            "humidity_avg": stat('Humidity', lambda s: s.mean()),
+            "wind_avg": stat('WindSpeed', lambda s: s.mean()),
+            "wind_max": stat('WindSpeed', lambda s: s.max()),
+            "rained": bool(col('Rainfall').any()) if col('Rainfall') is not None else False,
+        }
+
+        return _clean({
+            "session": race.event['EventName'],
+            "time": [mins[i] for i in idx],
+            "track_temp": series('TrackTemp'),
+            "air_temp": series('AirTemp'),
+            "humidity": series('Humidity'),
+            "wind_speed": series('WindSpeed'),
+            "summary": summary,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/race_control")
+def get_race_control(year: int, round_num: int):
+    """Race control feed — flags, safety cars, penalties, investigations, deleted laps."""
+    try:
+        race = _load_session(year, round_num, 'R')
+        rcm = race.race_control_messages
+        if rcm is None or rcm.empty:
+            raise HTTPException(status_code=404, detail="No race control data available")
+
+        messages = []
+        for _, row in rcm.iterrows():
+            msg = str(row.get('Message') or '').strip()
+            if not msg:
+                continue
+            lap = row.get('Lap')
+            messages.append({
+                "lap": int(lap) if pd.notna(lap) else None,
+                "category": str(row.get('Category') or ''),
+                "flag": str(row.get('Flag')) if pd.notna(row.get('Flag')) else None,
+                "scope": str(row.get('Scope')) if pd.notna(row.get('Scope')) else None,
+                "message": msg,
+            })
+
+        def up(m):
+            return m['message'].upper()
+
+        def count(pred):
+            return sum(1 for m in messages if pred(m))
+
+        summary = {
+            "total": len(messages),
+            "yellow_flags": count(lambda m: m['flag'] in ('YELLOW', 'DOUBLE YELLOW')),
+            "red_flags": count(lambda m: m['flag'] == 'RED'),
+            "safety_car": count(lambda m: 'SAFETY CAR' in up(m) and 'VIRTUAL' not in up(m) and 'DEPLOYED' in up(m)),
+            "virtual_sc": count(lambda m: 'VIRTUAL SAFETY CAR' in up(m) and 'DEPLOYED' in up(m)),
+            "penalties": count(lambda m: 'PENALTY' in up(m)),
+            "investigations": count(lambda m: 'INVESTIGAT' in up(m)),
+            "deleted_laps": count(lambda m: 'DELETED' in up(m)),
+        }
+
+        return _clean({
+            "session": race.event['EventName'],
+            "summary": summary,
+            "messages": messages,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
 @app.get("/api/circuit_history/{year}/{round_num}")
 def get_circuit_history(year: int, round_num: int):
     """Return the race result for the given year & round (used for the last-race recap)."""
