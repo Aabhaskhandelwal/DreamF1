@@ -430,14 +430,33 @@ def get_tyre_strategy(year: int, round_num: int):
                 continue
             valid_compounds = group['Compound'].dropna()
             compound = str(valid_compounds.iloc[0]) if not valid_compounds.empty else 'UNKNOWN'
+            lap_start = int(group['LapNumber'].iloc[0])
+            lap_end = int(group['LapNumber'].iloc[-1])
+
+            # Tyre age at the start of the stint (>0 means a used/scrubbed set)
+            tyre_life_start = None
+            if 'TyreLife' in group.columns:
+                tl = group['TyreLife'].dropna()
+                if not tl.empty:
+                    tyre_life_start = int(tl.iloc[0])
+
+            fresh = None
+            if 'FreshTyre' in group.columns:
+                ft = group['FreshTyre'].dropna()
+                if not ft.empty:
+                    fresh = bool(ft.iloc[0])
+
             stints.append({
                 "driver": drv,
                 "compound": compound,
-                "lap_start": int(group['LapNumber'].iloc[0]),
-                "lap_end": int(group['LapNumber'].iloc[-1])
+                "lap_start": lap_start,
+                "lap_end": lap_end,
+                "laps": lap_end - lap_start + 1,
+                "tyre_life_start": tyre_life_start,
+                "fresh": fresh,
             })
 
-    return {"session": race.event['EventName'], "stints": stints}
+    return _clean({"session": race.event['EventName'], "stints": stints})
 
 
 @app.get("/api/telemetry/{year}/{round_num}/quali")
