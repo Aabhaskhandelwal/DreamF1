@@ -14,6 +14,7 @@ from app.models import User, UserCreate, Prediction, PredictionCreate, Event, Gr
 from app.auth import get_password_hash, verify_password, create_access_token, get_current_user
 import fastf1 as ff1
 import pandas as pd
+import numpy as np
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
@@ -694,6 +695,123 @@ def get_circuit_map(year: int, round_num: int):
             "session": race.event['EventName'],
             "x": tel['X'].round(0).tolist(),
             "y": tel['Y'].round(0).tolist(),
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/telemetry/{year}/{round_num}/race_pace")
+def get_race_pace(year: int, round_num: int):
+    """Clean-air race pace per driver: median/best, per-compound, per-stint degradation.
+
+    Clean-air laps exclude lap 1, in/out laps, deleted (track-limits) laps, and any
+    lap run under SC/VSC/red (TrackStatus containing 4/5/6/7).
+    """
+    try:
+        race = _load_session(year, round_num, 'R')
+        if race.results is None or race.results.empty:
+            raise HTTPException(status_code=404, detail="No race results available")
+
+        finish_order = race.results['Abbreviation'].tolist()
+        finish_pos = {
+            row['Abbreviation']: int(float(row['Position']))
+            for _, row in race.results.iterrows()
+            if pd.notna(row.get('Position'))
+        }
+
+        drivers = []
+        for drv in finish_order:
+            laps = race.laps.pick_driver(drv)
+            if laps.empty:
+                continue
+            laps = laps[laps['LapTime'].notna()]
+            if laps.empty:
+                continue
+
+            ts = laps['TrackStatus'].fillna('').astype(str)
+            clean_mask = (
+                (laps['LapNumber'] > 1)
+                & laps['PitInTime'].isna()
+                & laps['PitOutTime'].isna()
+                & ~ts.str.contains('[4567]', regex=True)
+            )
+            if 'Deleted' in laps.columns:
+                clean_mask = clean_mask & ~laps['Deleted'].fillna(False)
+            clean = laps[clean_mask]
+            clean_secs = clean['LapTime'].dt.total_seconds()
+
+            n = int(len(clean_secs))
+            median = round(float(clean_secs.median()), 3) if n else None
+            best = round(float(clean_secs.min()), 3) if n else None
+            mean = round(float(clean_secs.mean()), 3) if n else None
+            std = round(float(clean_secs.std()), 3) if n > 1 else None
+
+            compounds = []
+            if n:
+                for comp, grp in clean.groupby('Compound'):
+                    cs = grp['LapTime'].dt.total_seconds()
+                    if not len(cs):
+                        continue
+                    compounds.append({
+                        "compound": str(comp),
+                        "laps": int(len(cs)),
+                        "median": round(float(cs.median()), 3),
+                        "best": round(float(cs.min()), 3),
+                    })
+
+            stints = []
+            for stint_no, grp in laps.groupby('Stint'):
+                comp_vals = grp['Compound'].dropna()
+                comp = str(comp_vals.iloc[0]) if not comp_vals.empty else 'UNKNOWN'
+                cg = clean[clean['Stint'] == stint_no]
+                cs = cg['LapTime'].dt.total_seconds()
+                stint_median = round(float(cs.median()), 3) if len(cs) else None
+                deg = None
+                if len(cs) >= 3:
+                    try:
+                        slope = float(np.polyfit(cg['LapNumber'].astype(float).to_numpy(),
+                                                 cs.to_numpy(), 1)[0])
+                        deg = round(slope, 3)
+                    except Exception:
+                        deg = None
+                stints.append({
+                    "stint": int(stint_no) if pd.notna(stint_no) else None,
+                    "compound": comp,
+                    "lap_start": int(grp['LapNumber'].min()),
+                    "lap_end": int(grp['LapNumber'].max()),
+                    "laps": int(len(grp)),
+                    "median": stint_median,
+                    "deg": deg,
+                })
+            stints.sort(key=lambda s: s['lap_start'])
+
+            drivers.append({
+                "code": drv,
+                "finish": finish_pos.get(drv),
+                "clean_laps": n,
+                "median": median,
+                "best": best,
+                "mean": mean,
+                "std": std,
+                "compounds": compounds,
+                "stints": stints,
+            })
+
+        medians = [d['median'] for d in drivers if d['median'] is not None]
+        fastest = min(medians) if medians else None
+        for d in drivers:
+            d['delta'] = (round(d['median'] - fastest, 3)
+                          if d['median'] is not None and fastest is not None else None)
+
+        drivers.sort(key=lambda d: (d['median'] is None, d['median'] if d['median'] is not None else 1e9))
+
+        return _clean({
+            "session": race.event['EventName'],
+            "fastest_median": fastest,
+            "drivers": drivers,
         })
 
     except HTTPException:
