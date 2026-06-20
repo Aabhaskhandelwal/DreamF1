@@ -12,16 +12,22 @@ interface PredictionSlot {
   placeholder: string
 }
 
-const DRIVER_SLOTS: PredictionSlot[] = [
+const REQUIRED_SLOTS: PredictionSlot[] = [
   { key: "pole_position", label: "Pole Position",     placeholder: "Pole" },
   { key: "first_place",   label: "P1 — Race Winner",  placeholder: "Winner" },
   { key: "second_place",  label: "P2 — Second Place", placeholder: "P2" },
   { key: "third_place",   label: "P3 — Third Place",  placeholder: "P3" },
-  { key: "fourth_place",  label: "P4 — Fourth Place", placeholder: "P4" },
-  { key: "fifth_place",   label: "P5 — Fifth Place",  placeholder: "P5" },
   { key: "fastest_lap",   label: "Fastest Lap",       placeholder: "Fastest Lap" },
-  { key: "dnf_driver",    label: "DNF Driver",        placeholder: "DNF" },
 ]
+
+const OPTIONAL_DRIVER_SLOTS: PredictionSlot[] = [
+  { key: "fourth_place",  label: "P4 — Fourth Place (+8)", placeholder: "P4" },
+  { key: "fifth_place",   label: "P5 — Fifth Place (+6)",  placeholder: "P5" },
+  { key: "dnf_driver",    label: "DNF Driver (+5)",        placeholder: "DNF" },
+]
+
+// Combined list — read-only review of submitted/locked predictions
+const DRIVER_SLOTS: PredictionSlot[] = [...REQUIRED_SLOTS, ...OPTIONAL_DRIVER_SLOTS]
 
 // Only finishing positions must be unique — pole and fastest lap can share a driver with any slot
 const POSITION_KEYS = new Set<keyof FormState>([
@@ -128,10 +134,10 @@ export default function PredictClient({
     return (v: string | null) => setForm((f) => ({ ...f, [key]: v }))
   }
 
+  // Golden Rule 4 — only the 5 required picks gate submission
   const canSubmit =
-    form.pole_position && form.first_place && form.second_place && form.third_place &&
-    form.fourth_place && form.fifth_place && form.fastest_lap && form.dnf_driver &&
-    form.safety_car !== null
+    form.pole_position && form.first_place && form.second_place &&
+    form.third_place && form.fastest_lap
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -311,44 +317,80 @@ export default function PredictClient({
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="glass-card p-6 space-y-6">
-          <p className="section-label">Your Picks</p>
+          {/* Required picks */}
+          <div className="space-y-4">
+            <div className="flex items-baseline justify-between">
+              <p className="section-label">Required Picks</p>
+              <span className="text-[0.55rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+                All 5 needed
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {REQUIRED_SLOTS.map(({ key, label, placeholder }) => (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+                    {label}
+                  </label>
+                  <DriverSelect
+                    value={form[key] as string | null}
+                    onChange={set(key)}
+                    placeholder={placeholder}
+                    disabledCodes={disabledFor(key)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {DRIVER_SLOTS.map(({ key, label, placeholder }) => (
-              <div key={key} className="space-y-1.5">
+          <div className="border-t border-border-subtle" />
+
+          {/* Optional picks — bonus points */}
+          <div className="space-y-4">
+            <div className="flex items-baseline justify-between">
+              <p className="section-label">Bonus Picks</p>
+              <span className="text-[0.55rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+                Optional · extra points
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {OPTIONAL_DRIVER_SLOTS.map(({ key, label, placeholder }) => (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+                    {label}
+                  </label>
+                  <DriverSelect
+                    value={form[key] as string | null}
+                    onChange={set(key)}
+                    placeholder={placeholder}
+                    disabledCodes={disabledFor(key)}
+                  />
+                </div>
+              ))}
+
+              {/* Safety Car — optional yes/no toggle (+5) */}
+              <div className="space-y-1.5">
                 <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-                  {label}
+                  Safety Car Deployed? (+5)
                 </label>
-                <DriverSelect
-                  value={form[key] as string | null}
-                  onChange={set(key)}
-                  placeholder={placeholder}
-                  disabledCodes={disabledFor(key)}
-                />
-              </div>
-            ))}
-
-            {/* Safety Car — required yes/no */}
-            <div className="space-y-1.5">
-              <label className="text-[0.6rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
-                Safety Car Deployed?
-              </label>
-              <div className="flex gap-2">
-                {([true, false] as const).map((val) => (
-                  <button
-                    key={String(val)}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, safety_car: val }))}
-                    className={`px-4 py-1.5 text-[0.65rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
-                                border transition-colors cursor-pointer
-                                ${form.safety_car === val
-                                  ? "border-f1-red bg-f1-red text-white"
-                                  : "border-border-muted text-text-muted hover:border-[#444] hover:text-text-primary"
-                                }`}
-                  >
-                    {val ? "Yes" : "No"}
-                  </button>
-                ))}
+                <div className="flex gap-2">
+                  {([true, false] as const).map((val) => (
+                    <button
+                      key={String(val)}
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({ ...f, safety_car: f.safety_car === val ? null : val }))
+                      }
+                      className={`px-4 py-1.5 text-[0.65rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
+                                  border transition-colors cursor-pointer
+                                  ${form.safety_car === val
+                                    ? "border-f1-red bg-f1-red text-white"
+                                    : "border-border-muted text-text-muted hover:border-[#444] hover:text-text-primary"
+                                  }`}
+                    >
+                      {val ? "Yes" : "No"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

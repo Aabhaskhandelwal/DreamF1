@@ -280,6 +280,7 @@ def score_race(event_id: int, session: Session = Depends(get_session)):
         dnf_pts = 5  if pred.dnf_driver and pred.dnf_driver in actual_dnfs else 0
         sc_pts  = 5  if pred.safety_car is not None and pred.safety_car == actual_safety_car else 0
 
+        old_pts = pred.points_earned or 0
         pred.points_earned = p1_pts + p2_pts + p3_pts + p4_pts + p5_pts + fl_pts + pol_pts + dnf_pts + sc_pts
         pred.score_breakdown = json.dumps({
             "pole": {"pick": pred.pole_position, "actual": actual_pole, "pts": pol_pts},
@@ -294,9 +295,10 @@ def score_race(event_id: int, session: Session = Depends(get_session)):
         })
         session.add(pred)
 
+        # Add only the delta so re-scoring a race stays idempotent
         user = session.get(User, pred.user_id)
         if user:
-            user.total_points += points
+            user.total_points += (pred.points_earned - old_pts)
             session.add(user)
 
     event.is_completed = True
@@ -697,3 +699,78 @@ def get_circuit_map(year: int, round_num: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"FastF1 error: {str(e)}")
+
+
+@app.get("/api/circuit_history/{year}/{round_num}")
+def get_circuit_history(year: int, round_num: int):
+    """Return previous year's race results at the same round number (circuit proxy)."""
+    prev_year = year - 1
+    try:
+        hist = _load_session(prev_year, round_num, 'R')
+    except Exception:
+        return {"_error": f"No data for {prev_year} Round {round_num}"}
+
+    try:
+        results = hist.results
+        if results is None or results.empty:
+            return {"_error": "No race results"}
+
+        winner_row = results.iloc[0]
+        winner = str(winner_row['Abbreviation']) if pd.notna(winner_row.get('Abbreviation')) else None
+        winner_team = (
+            str(winner_row['TeamName'])
+            if 'TeamName' in results.columns and pd.notna(winner_row.get('TeamName'))
+            else None
+        )
+
+        pole = None
+        if 'GridPosition' in results.columns:
+            pole_rows = results[results['GridPosition'] == 1.0]
+            if not pole_rows.empty:
+                pole = str(pole_rows.iloc[0]['Abbreviation'])
+
+        fl_driver = None
+        fl_time_str = None
+        try:
+            fastest_lap = hist.laps.pick_fastest()
+            fl_driver = str(fastest_lap['Driver'])
+            t = fastest_lap['LapTime']
+            if pd.notna(t) and hasattr(t, 'total_seconds'):
+                secs = t.total_seconds()
+                m = int(secs // 60)
+                s = secs % 60
+                fl_time_str = f"{m}:{s:06.3f}"
+        except Exception:
+            pass
+
+        sc = bool(hist.laps['TrackStatus'].dropna().str.contains('4').any())
+        dnf_count = int((~results['Status'].str.contains(r'Finished|\+', regex=True, na=False)).sum())
+
+        total_laps = None
+        try:
+            nl = winner_row.get('NumberOfLaps')
+            if nl is not None and pd.notna(nl):
+                total_laps = int(nl)
+        except Exception:
+            pass
+
+        event_name = None
+        try:
+            event_name = str(hist.event['EventName'])
+        except Exception:
+            pass
+
+        return _clean({
+            "year": prev_year,
+            "event_name": event_name,
+            "winner": winner,
+            "winner_team": winner_team,
+            "pole": pole,
+            "fastest_lap_driver": fl_driver,
+            "fastest_lap_time": fl_time_str,
+            "safety_car": sc,
+            "dnf_count": dnf_count,
+            "total_laps": total_laps,
+        })
+    except Exception as e:
+        return {"_error": str(e)}
