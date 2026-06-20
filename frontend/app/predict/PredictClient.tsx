@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { TEAM_COLORS } from "@/lib/design"
 import DriverSelect from "./DriverSelect"
+import DriverAvatar from "@/components/DriverAvatar"
 import type { F1Event } from "../dashboard/page"
 
 interface PredictionSlot {
@@ -70,8 +71,8 @@ const BLANK: FormState = {
 function DriverChip({ code }: { code: string }) {
   const color = TEAM_COLORS[code] ?? "#666"
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: color }} />
+    <span className="flex items-center gap-2">
+      <DriverAvatar code={code} size={22} />
       <span
         className="font-(family-name:--font-f1-regular) text-sm tracking-wider"
         style={{ color }}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { teamColor } from "@/lib/design"
+import { teamColor, TEAM_COLORS } from "@/lib/design"
 
 /**
  * Driver headshot with graceful fallback. Tries /assets/Drivers/{CODE}.avif
@@ -18,7 +18,8 @@ export default function DriverAvatar({
   size?: number
 }) {
   const [failed, setFailed] = useState(false)
-  const ring = teamColor(slug)
+  // Use the team slug when provided, else fall back to the driver-code colour.
+  const ring = slug ? teamColor(slug) : (TEAM_COLORS[code] ?? "#888888")
 
   if (failed || !code) {
     return (

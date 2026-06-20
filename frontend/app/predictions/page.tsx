@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import NavHeader from "@/components/NavHeader"
+import DriverAvatar from "@/components/DriverAvatar"
 import type { F1Event } from "../dashboard/page"
 import { TEAM_COLORS } from "@/lib/design"
 
@@ -106,6 +107,7 @@ function DriverChip({ code, label, compact }: { code: string | null; label: stri
           {label}
         </span>
       )}
+      {!compact && code && <DriverAvatar code={code} size={22} />}
       <span
         className={`font-(family-name:--font-f1-regular) ${compact ? "text-[0.65rem]" : "text-xs"} px-1.5 py-0.5 rounded-sm`}
         style={{
