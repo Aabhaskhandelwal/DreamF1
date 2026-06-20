@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { TEAM_COLORS } from "@/lib/design"
+import { TEAM_COLORS, teammateDashes } from "@/lib/design"
 
 export interface GapData {
   session: string
@@ -40,7 +40,9 @@ function fmtGap(s: number): string {
 
 export default function GapChart({ data }: { data: GapData }) {
   const codes = Object.keys(data.drivers)
+  const dashes = teammateDashes(codes)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [focused, setFocused] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{
     x: number; lap: number; entries: { code: string; gap: number }[]
   } | null>(null)
@@ -110,6 +112,8 @@ export default function GapChart({ data }: { data: GapData }) {
             <button
               key={code}
               onClick={() => toggle(code)}
+              onMouseEnter={() => setFocused(code)}
+              onMouseLeave={() => setFocused(null)}
               className="flex items-center gap-1.5 px-2 py-1 rounded text-[0.6rem] font-(family-name:--font-dm-mono) uppercase tracking-wider transition-all cursor-pointer border"
               style={{
                 opacity: on ? 1 : 0.25,
@@ -118,7 +122,10 @@ export default function GapChart({ data }: { data: GapData }) {
                 borderColor: on ? `${color}44` : "#222",
               }}
             >
-              <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: on ? color : "#444" }} />
+              <span
+                className="inline-block w-3.5"
+                style={{ borderTop: `2px ${dashes[code] ? "dashed" : "solid"} ${on ? color : "#444"}` }}
+              />
               {code}
             </button>
           )
@@ -164,25 +171,48 @@ export default function GapChart({ data }: { data: GapData }) {
 
           <text x={(cL + cR) / 2} y={H - 2} fontSize={11} fill="#333" textAnchor="middle" fontFamily="var(--font-dm-mono)">LAP</text>
 
-          {/* Gap lines per driver */}
-          {codes.filter((c) => !hidden.has(c)).map((code) => {
-            const { lap_numbers, gap_seconds } = data.drivers[code]
-            // Filter out null/NaN gaps — isValidGap prevents isFinite(null) coercion bug
-            const valid = lap_numbers
-              .map((l, i) => ({ l, g: gap_seconds[i] }))
-              .filter((x): x is { l: number; g: number } => isValidGap(x.g))
+          {/* Gap lines per driver — focused driver drawn last (on top) */}
+          {codes
+            .filter((c) => !hidden.has(c))
+            .sort((a, b) => (a === focused ? 1 : 0) - (b === focused ? 1 : 0))
+            .map((code) => {
+              const { lap_numbers, gap_seconds } = data.drivers[code]
+              // Filter out null/NaN gaps — isValidGap prevents isFinite(null) coercion bug
+              const valid = lap_numbers
+                .map((l, i) => ({ l, g: gap_seconds[i] }))
+                .filter((x): x is { l: number; g: number } => isValidGap(x.g))
 
-            if (!valid.length) return null
-            const pts = valid.map(({ l, g }) => `${toX(l).toFixed(1)},${toY(g).toFixed(1)}`).join(" ")
-            const color = TEAM_COLORS[code] ?? "#666"
-            const last = valid[valid.length - 1]
-            return (
-              <g key={code}>
-                <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
-                <text x={toX(last.l) + 5} y={toY(last.g) + 4} fontSize={10} fill={color} fontFamily="var(--font-dm-mono)">{code}</text>
-              </g>
-            )
-          })}
+              if (!valid.length) return null
+              const pts = valid.map(({ l, g }) => `${toX(l).toFixed(1)},${toY(g).toFixed(1)}`).join(" ")
+              const color = TEAM_COLORS[code] ?? "#666"
+              const last = valid[valid.length - 1]
+              const isF = focused === code
+              const dim = focused !== null && !isF
+              return (
+                <g key={code} opacity={dim ? 0.12 : 1}>
+                  <polyline
+                    points={pts}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={isF ? 3.25 : 2}
+                    strokeDasharray={dashes[code] || undefined}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity={0.9}
+                  />
+                  <text
+                    x={toX(last.l) + 5}
+                    y={toY(last.g) + 4}
+                    fontSize={isF ? 12 : 10}
+                    fontWeight={isF ? 700 : 400}
+                    fill={color}
+                    fontFamily="var(--font-dm-mono)"
+                  >
+                    {code}
+                  </text>
+                </g>
+              )
+            })}
 
           {/* Crosshair + dots */}
           {tooltip && (

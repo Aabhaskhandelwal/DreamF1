@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { TEAM_COLORS } from "@/lib/design"
+import { TEAM_COLORS, teammateDashes } from "@/lib/design"
 
 interface DriverSpeed {
   distance: number[]
@@ -33,7 +33,9 @@ function closestIdx(arr: number[], target: number): number {
 
 export default function SpeedTrace({ drivers, top = 10 }: Props) {
   const driverCodes = Object.keys(drivers).slice(0, top)
+  const dashes = teammateDashes(driverCodes)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [focused, setFocused] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{
     x: number; dist: number; entries: { code: string; speed: number }[]
   } | null>(null)
@@ -88,6 +90,8 @@ export default function SpeedTrace({ drivers, top = 10 }: Props) {
             <button
               key={code}
               onClick={() => toggle(code)}
+              onMouseEnter={() => setFocused(code)}
+              onMouseLeave={() => setFocused(null)}
               className="flex items-center gap-1.5 px-2 py-1 rounded text-[0.6rem] font-(family-name:--font-dm-mono) uppercase tracking-wider transition-all cursor-pointer border"
               style={{
                 opacity: on ? 1 : 0.25,
@@ -96,7 +100,10 @@ export default function SpeedTrace({ drivers, top = 10 }: Props) {
                 borderColor: on ? `${color}44` : "#222",
               }}
             >
-              <span className="inline-block w-3 h-0.5 rounded" style={{ backgroundColor: on ? color : "#444" }} />
+              <span
+                className="inline-block w-3.5"
+                style={{ borderTop: `2px ${dashes[code] ? "dashed" : "solid"} ${on ? color : "#444"}` }}
+              />
               {code}
             </button>
           )
@@ -127,23 +134,29 @@ export default function SpeedTrace({ drivers, top = 10 }: Props) {
             DISTANCE (m)
           </text>
 
-          {/* Speed traces */}
-          {driverCodes.filter((c) => !hidden.has(c)).map((code) => {
-            const { distance, speed } = drivers[code]
-            const pts = distance.map((d, i) => `${toX(d).toFixed(1)},${toY(speed[i]).toFixed(1)}`).join(" ")
-            return (
-              <polyline
-                key={code}
-                points={pts}
-                fill="none"
-                stroke={TEAM_COLORS[code] ?? "#666"}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={0.85}
-              />
-            )
-          })}
+          {/* Speed traces — focused driver drawn last (on top) */}
+          {driverCodes
+            .filter((c) => !hidden.has(c))
+            .sort((a, b) => (a === focused ? 1 : 0) - (b === focused ? 1 : 0))
+            .map((code) => {
+              const { distance, speed } = drivers[code]
+              const pts = distance.map((d, i) => `${toX(d).toFixed(1)},${toY(speed[i]).toFixed(1)}`).join(" ")
+              const isF = focused === code
+              const dim = focused !== null && !isF
+              return (
+                <polyline
+                  key={code}
+                  points={pts}
+                  fill="none"
+                  stroke={TEAM_COLORS[code] ?? "#666"}
+                  strokeWidth={isF ? 3.25 : 2}
+                  strokeDasharray={dashes[code] || undefined}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={dim ? 0.12 : 0.9}
+                />
+              )
+            })}
 
           {/* Crosshair + dots */}
           {tooltip && (

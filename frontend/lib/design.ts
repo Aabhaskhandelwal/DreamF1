@@ -68,3 +68,18 @@ export const TEAM_SLUG_COLORS: Record<string, string> = {
 export function teamColor(slug: string | null | undefined): string {
   return (slug && TEAM_SLUG_COLORS[slug]) || "#888888";
 }
+
+// Teammates share a colour, so give the 2nd/3rd car of a colour a dash pattern
+// to keep overlapping line charts distinguishable. Returns code -> SVG dasharray
+// ("" = solid line).
+export function teammateDashes(codes: string[]): Record<string, string> {
+  const seenByColor: Record<string, number> = {};
+  const out: Record<string, string> = {};
+  for (const code of codes) {
+    const color = TEAM_COLORS[code] ?? "#666";
+    const n = seenByColor[color] ?? 0;
+    seenByColor[color] = n + 1;
+    out[code] = n === 0 ? "" : n === 1 ? "7 5" : "2 4";
+  }
+  return out;
+}
