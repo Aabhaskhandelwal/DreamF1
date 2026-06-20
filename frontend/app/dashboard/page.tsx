@@ -46,8 +46,11 @@ export default async function DashboardPage() {
   // Date-based filtering — is_completed only flips after admin scoring
   const nextRace = events.find((e) => e.event_date >= today) ?? null
   const upcomingAfterNext = events.filter((e) => e.event_date > (nextRace?.event_date ?? today))
-  const completedCount = events.filter((e) => e.event_date < today).length
+  const completed = events.filter((e) => e.event_date < today)
+  const completedCount = completed.length
   const remainingCount = events.filter((e) => e.event_date >= today).length
+  // Most recent completed 2026 race — drives the "Last Race" recap card
+  const lastRace = completedCount > 0 ? completed[completedCount - 1] : null
 
   const seasonMetrics = [
     { value: events.length, label: "Total Rounds" },
@@ -82,11 +85,14 @@ export default async function DashboardPage() {
         </div>
 
         <div className="lg:col-span-1">
-          {nextRace ? (
-            <CircuitHistory year={2026} roundNum={nextRace.round_number} />
+          {lastRace ? (
+            <CircuitHistory year={2026} roundNum={lastRace.round_number} />
           ) : (
-            <div className="glass-card h-full p-5 flex items-center justify-center min-h-[200px]">
-              <p className="text-text-dim text-xs font-(family-name:--font-dm-mono)">—</p>
+            <div className="glass-card h-full p-5 flex flex-col items-center justify-center gap-2 min-h-[200px]">
+              <p className="section-label text-text-dim">Last Race</p>
+              <p className="text-text-dim text-xs font-(family-name:--font-dm-mono) text-center">
+                No races completed yet this season.
+              </p>
             </div>
           )}
         </div>
