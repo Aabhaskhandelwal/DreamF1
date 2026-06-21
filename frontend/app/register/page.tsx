@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import { setSession } from "@/lib/auth"
 
 export default function Register() {
   const [username, setUsername] = useState("")
@@ -29,7 +30,14 @@ export default function Register() {
         return
       }
 
-      router.push("/login")
+      // Backend auto-logs-in on register (returns a token) — go straight in.
+      const data = await response.json().catch(() => ({}))
+      if (data.access_token) {
+        setSession(data.access_token, data.username ?? username)
+        router.push("/dashboard")
+      } else {
+        router.push("/login")
+      }
     } catch {
       setError("Could not connect to the server")
     }

@@ -1,3 +1,4 @@
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -5,6 +6,10 @@ from unittest.mock import MagicMock, patch
 sys.modules["fastf1"] = MagicMock()
 sys.modules["pandas"] = MagicMock()
 sys.modules["numpy"] = MagicMock()
+
+# Ensure JWT signing works in tests even if the env doesn't provide these.
+os.environ.setdefault("SECRET_KEY", "test-secret-key-0123456789abcdef")
+os.environ.setdefault("ALGORITHM", "HS256")
 
 import pytest
 from sqlalchemy.pool import StaticPool

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { clearSession } from "@/lib/auth"
 
 type NavKey = "dashboard" | "telemetry" | "compare" | "standings" | "predict" | "predictions" | "circles"
 
@@ -29,8 +30,7 @@ export default function NavHeader({ active }: { active?: NavKey }) {
   }, [])
 
   function logout() {
-    localStorage.removeItem("token")
-    localStorage.removeItem("username")
+    clearSession()
     router.push("/login")
   }
 

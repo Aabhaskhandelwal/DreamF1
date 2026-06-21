@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import { setSession } from "@/lib/auth"
 
 export default function Login() {
   const [username, setUsername] = useState("")
@@ -34,8 +35,7 @@ export default function Login() {
       }
 
       const data = await response.json()
-      localStorage.setItem("token", data.access_token)
-      localStorage.setItem("username", username)
+      setSession(data.access_token, data.username ?? username)
       router.push("/dashboard")
     } catch {
       setError("Could not connect to the server")

@@ -2,6 +2,7 @@ import secrets
 import math
 import threading
 import json
+import re
 import time
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException
@@ -160,20 +161,39 @@ def get_schedule(session: Session = Depends(get_session)):
     return result
 
 
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 @app.post("/api/register")
 def register_user(user_data: UserCreate, session: Session = Depends(get_session)):
-    if session.exec(select(User).where(User.username == user_data.username)).first():
+    username = (user_data.username or "").strip()
+    email = (user_data.email or "").strip().lower()
+
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(status_code=400, detail="Enter a valid email address")
+    if len(user_data.password or "") < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    # Case-insensitive uniqueness so "Bob" and "bob" can't both register.
+    if session.exec(select(User).where(func.lower(User.username) == username.lower())).first():
         raise HTTPException(status_code=400, detail="Username already taken")
+    if session.exec(select(User).where(func.lower(User.email) == email)).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=get_password_hash(user_data.password)
+        username=username,
+        email=email,
+        hashed_password=get_password_hash(user_data.password),
     )
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
-    return {"message": "User created successfully!", "user_id": new_user.id}
+
+    # Auto-login: hand back a token so the user is signed in straight after sign-up.
+    access_token = create_access_token(data={"sub": str(new_user.id)})
+    return {"access_token": access_token, "token_type": "bearer", "username": new_user.username}
 
 
 class LoginRequest(BaseModel):
@@ -183,12 +203,24 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/login")
 def login(login_data: LoginRequest, session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.username == login_data.username)).first()
+    username = (login_data.username or "").strip()
+    user = session.exec(select(User).where(func.lower(User.username) == username.lower())).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     access_token = create_access_token(data={"sub": str(user.id)})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "username": user.username}
+
+
+@app.get("/api/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    """Validate the token and return the current user's profile."""
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "total_points": current_user.total_points,
+    }
 
 
 @app.post("/api/predict")
@@ -982,17 +1014,36 @@ def get_race_control(year: int, round_num: int):
         if rcm is None or rcm.empty:
             raise HTTPException(status_code=404, detail="No race control data available")
 
+        def classify(u: str, flag: str | None) -> str:
+            """Bucket a message into a display kind so the UI can filter the feed."""
+            if ('SAFETY CAR' in u or 'VSC' in u or 'MEDICAL CAR' in u
+                    or 'MARSHAL' in u or 'RECOVERY VEHICLE' in u):
+                return 'safety'
+            if 'DELETED' in u or 'TRACK LIMITS' in u:
+                return 'track_limits'
+            if (u.startswith('FIA STEWARDS') or 'PENALTY' in u or 'INVESTIGAT' in u
+                    or 'NOTED' in u or 'REPRIMAND' in u or 'WARNING' in u
+                    or 'NO FURTHER ACTION' in u):
+                return 'steward'
+            if 'DRS' in u:
+                return 'drs'
+            if flag in ('YELLOW', 'DOUBLE YELLOW', 'RED', 'BLUE', 'CHEQUERED', 'GREEN', 'CLEAR'):
+                return 'flag'
+            return 'other'
+
         messages = []
         for _, row in rcm.iterrows():
             msg = str(row.get('Message') or '').strip()
             if not msg:
                 continue
             lap = row.get('Lap')
+            flag = str(row.get('Flag')) if pd.notna(row.get('Flag')) else None
             messages.append({
                 "lap": int(lap) if pd.notna(lap) else None,
                 "category": str(row.get('Category') or ''),
-                "flag": str(row.get('Flag')) if pd.notna(row.get('Flag')) else None,
+                "flag": flag,
                 "scope": str(row.get('Scope')) if pd.notna(row.get('Scope')) else None,
+                "kind": classify(msg.upper(), flag),
                 "message": msg,
             })
 
@@ -1002,14 +1053,35 @@ def get_race_control(year: int, round_num: int):
         def count(pred):
             return sum(1 for m in messages if pred(m))
 
+        # Yellow flags arrive once per marshal sector — collapse the per-sector
+        # spam into incident "periods": a new period begins only when a yellow
+        # appears while every sector is currently green.
+        yellow_periods = 0
+        active_sectors: set[str] = set()
+        for m in messages:
+            f, u = m['flag'], up(m)
+            sec = re.search(r'SECTOR (\d+)', u)
+            if f in ('YELLOW', 'DOUBLE YELLOW'):
+                if not active_sectors:
+                    yellow_periods += 1
+                active_sectors.add(sec.group(1) if sec else 'track')
+            elif f == 'CLEAR':
+                if sec:
+                    active_sectors.discard(sec.group(1))
+                else:
+                    active_sectors.clear()
+
         summary = {
             "total": len(messages),
-            "yellow_flags": count(lambda m: m['flag'] in ('YELLOW', 'DOUBLE YELLOW')),
+            "yellow_flags": yellow_periods,
             "red_flags": count(lambda m: m['flag'] == 'RED'),
-            "safety_car": count(lambda m: 'SAFETY CAR' in up(m) and 'VIRTUAL' not in up(m) and 'DEPLOYED' in up(m)),
-            "virtual_sc": count(lambda m: 'VIRTUAL SAFETY CAR' in up(m) and 'DEPLOYED' in up(m)),
-            "penalties": count(lambda m: 'PENALTY' in up(m)),
-            "investigations": count(lambda m: 'INVESTIGAT' in up(m)),
+            # FastF1 writes "SAFETY CAR DEPLOYED" for a full SC and "VSC DEPLOYED"
+            # (abbreviated) for a virtual one — match both spellings explicitly.
+            "safety_car": count(lambda m: 'SAFETY CAR DEPLOYED' in up(m) and 'VIRTUAL' not in up(m)),
+            "virtual_sc": count(lambda m: 'VSC DEPLOYED' in up(m) or 'VIRTUAL SAFETY CAR DEPLOYED' in up(m)),
+            # Count penalties awarded, not the follow-up "PENALTY SERVED" notice.
+            "penalties": count(lambda m: 'PENALTY' in up(m) and 'SERVED' not in up(m) and 'NO FURTHER' not in up(m)),
+            "investigations": count(lambda m: 'UNDER INVESTIGATION' in up(m)),
             "deleted_laps": count(lambda m: 'DELETED' in up(m)),
         }
 
