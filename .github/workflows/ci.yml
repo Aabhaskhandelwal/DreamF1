@@ -28,6 +28,7 @@ jobs:
             "sqlmodel>=0.0.22" \
             "python-jose[cryptography]" \
             "passlib[bcrypt]" \
+            "bcrypt<4.0.0" \
             "python-multipart" \
             "uvicorn" \
             "httpx" \
