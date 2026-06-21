@@ -3,6 +3,7 @@ import NextRaceCard from "./NextRaceCard"
 import CircuitHistory from "./CircuitHistory"
 import CirclesOverview from "./CirclesOverview"
 import StandingsCard from "./StandingsCard"
+import SeasonSnapshot from "./SeasonSnapshot"
 import NavHeader from "@/components/NavHeader"
 import { FLAG_CODES, getTrackImage } from "@/lib/trackData"
 
@@ -98,6 +99,9 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Your season (logged-in only) ── */}
+      <SeasonSnapshot />
 
       {/* ── Championship standings ── */}
       <div className="mt-4">

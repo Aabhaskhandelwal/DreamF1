@@ -1088,6 +1088,25 @@ def get_circuit_history(year: int, round_num: int):
         except Exception:
             pass
 
+        # Race-control incident summary (more FastF1 data)
+        incidents = None
+        try:
+            rcm = hist.race_control_messages
+            if rcm is not None and not rcm.empty:
+                up = rcm['Message'].fillna('').astype(str).str.upper()
+                flags = (rcm['Flag'].fillna('').astype(str)
+                         if 'Flag' in rcm.columns else pd.Series([''] * len(rcm)))
+                incidents = {
+                    "yellow_flags": int(flags.isin(['YELLOW', 'DOUBLE YELLOW']).sum()),
+                    "red_flags": int((flags == 'RED').sum()),
+                    "safety_car": int((up.str.contains('SAFETY CAR') & ~up.str.contains('VIRTUAL') & up.str.contains('DEPLOYED')).sum()),
+                    "virtual_sc": int((up.str.contains('VIRTUAL SAFETY CAR') & up.str.contains('DEPLOYED')).sum()),
+                    "penalties": int(up.str.contains('PENALTY').sum()),
+                    "investigations": int(up.str.contains('INVESTIGAT').sum()),
+                }
+        except Exception:
+            incidents = None
+
         # Weather summary (more FastF1 data)
         weather = None
         try:
@@ -1126,6 +1145,7 @@ def get_circuit_history(year: int, round_num: int):
             "safety_car": sc,
             "dnf_count": dnf_count,
             "total_laps": total_laps,
+            "incidents": incidents,
             "weather": weather,
         })
     except Exception as e:

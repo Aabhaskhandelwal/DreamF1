@@ -32,8 +32,18 @@ interface CircuitHistoryData {
   safety_car: boolean
   dnf_count: number
   total_laps: number | null
+  incidents: Incidents | null
   weather: Weather | null
   _error?: string
+}
+
+interface Incidents {
+  yellow_flags: number
+  red_flags: number
+  safety_car: number
+  virtual_sc: number
+  penalties: number
+  investigations: number
 }
 
 const MEDAL: Record<number, string> = { 1: "#ffd700", 2: "#c0c0c0", 3: "#cd7f32" }
@@ -172,6 +182,35 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
           </span>
         </Stat>
       </div>
+
+      {/* Incidents */}
+      {data.incidents && (() => {
+        const inc = data.incidents
+        const chips = [
+          { label: "Yellow", v: inc.yellow_flags, c: "#facc15" },
+          { label: "Red", v: inc.red_flags, c: "#ED1131" },
+          { label: "SC", v: inc.safety_car, c: "#facc15" },
+          { label: "VSC", v: inc.virtual_sc, c: "#f59e0b" },
+          { label: "Penalties", v: inc.penalties, c: "#ED1131" },
+          { label: "Investig.", v: inc.investigations, c: "#f59e0b" },
+        ].filter((x) => x.v > 0)
+        if (chips.length === 0) return null
+        return (
+          <div className="border-t border-border-subtle pt-3">
+            <p className="text-[0.55rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-dim mb-2">
+              Incidents
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {chips.map((x) => (
+                <span key={x.label} className="flex items-center gap-1 px-2 py-1 rounded-sm border border-border-subtle">
+                  <span className="font-(family-name:--font-orbitron) text-[0.7rem] font-bold tabular-nums" style={{ color: x.c }}>{x.v}</span>
+                  <span className="text-[0.55rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-wider">{x.label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Weather */}
       {w && (
