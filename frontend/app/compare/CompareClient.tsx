@@ -4,8 +4,43 @@ import { useEffect, useMemo, useState } from "react"
 import { TEAM_COLORS } from "@/lib/design"
 import { parseUTC } from "@/lib/trackData"
 import DriverAvatar from "@/components/DriverAvatar"
-import DriverSelect from "../predict/DriverSelect"
 import type { F1Event } from "../dashboard/page"
+
+const TEAM_GROUPS: { team: string; drivers: string[] }[] = [
+  { team: "Red Bull", drivers: ["VER", "HAD"] },
+  { team: "McLaren", drivers: ["NOR", "PIA"] },
+  { team: "Ferrari", drivers: ["LEC", "HAM"] },
+  { team: "Mercedes", drivers: ["RUS", "ANT"] },
+  { team: "Aston Martin", drivers: ["ALO", "STR"] },
+  { team: "Alpine", drivers: ["GAS", "COL"] },
+  { team: "Williams", drivers: ["ALB", "SAI"] },
+  { team: "Racing Bulls", drivers: ["LAW", "LIN"] },
+  { team: "Audi", drivers: ["HUL", "BOR"] },
+  { team: "Haas", drivers: ["BEA", "OCO"] },
+  { team: "Cadillac", drivers: ["BOT", "PER"] },
+]
+
+function DriverPicker({ value, onChange, disabled }: { value: string | null; onChange: (v: string) => void; disabled?: string | null }) {
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="mt-1 w-full bg-surface-2 border border-border-default rounded px-3 py-2 text-sm
+                 font-(family-name:--font-f1-regular) tracking-wider text-text-secondary cursor-pointer
+                 focus:outline-none focus:border-f1-red"
+    >
+      {TEAM_GROUPS.map((g) => (
+        <optgroup key={g.team} label={g.team} className="bg-[#111]">
+          {g.drivers.map((c) => (
+            <option key={c} value={c} disabled={c === disabled} className="bg-[#111]">
+              {c}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
 
 interface DriverChannels {
   team_slug: string
@@ -189,11 +224,11 @@ export default function CompareClient({ events, backendDown }: { events: F1Event
         </div>
         <div>
           <label className="text-[0.55rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-dim">Driver 1</label>
-          <div className="mt-1"><DriverSelect value={d1} onChange={setD1} placeholder="Driver 1" disabledCodes={new Set(d2 ? [d2] : [])} /></div>
+          <DriverPicker value={d1} onChange={setD1} disabled={d2} />
         </div>
         <div>
           <label className="text-[0.55rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-dim">Driver 2</label>
-          <div className="mt-1"><DriverSelect value={d2} onChange={setD2} placeholder="Driver 2" disabledCodes={new Set(d1 ? [d1] : [])} /></div>
+          <DriverPicker value={d2} onChange={setD2} disabled={d1} />
         </div>
       </div>
 
