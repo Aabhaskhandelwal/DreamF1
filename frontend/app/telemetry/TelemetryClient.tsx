@@ -30,6 +30,12 @@ function parseUTC(iso: string | null): Date | null {
   return new Date(iso.endsWith("Z") ? iso : iso + "Z")
 }
 
+function fmtLapTime(s: number): string {
+  const m = Math.floor(s / 60)
+  const rem = (s % 60).toFixed(3).padStart(6, "0")
+  return `${m}:${rem}`
+}
+
 const COUNTRY_TO_TRACK: Record<string, string> = {
   Australia: "Australia", Bahrain: "Bahrain", "Saudi Arabia": "SaudiArabia",
   Japan: "Japan", China: "China", Monaco: "Monaco", Spain: "Spain",
@@ -185,6 +191,12 @@ export default function TelemetryClient({
 
   const driverOrder = summary?.results.map((r) => r.abbreviation) ?? []
 
+  const flResult = summary?.results.find((r) => r.fastest_lap)
+  const circuitFastestLap =
+    flResult && flResult.best_lap_time
+      ? { driver: flResult.abbreviation, time: fmtLapTime(flResult.best_lap_time) }
+      : null
+
   if (backendDown || events.length === 0) {
     return (
       <div className="glass-card p-8 space-y-2">
@@ -316,8 +328,12 @@ export default function TelemetryClient({
 
           {tab === "map" && (
             mapData === null ? <Spinner /> :
-            mapData ? <CircuitMap data={mapData} /> :
-            <EmptyState message="Circuit map data not available for this round." />
+            <CircuitMap
+              data={mapData || { session: selectedEvent?.event_name ?? "", x: [], y: [] }}
+              country={selectedEvent?.country}
+              eventName={selectedEvent?.event_name}
+              fastestLap={circuitFastestLap}
+            />
           )}
 
           {tab === "weather" && (
