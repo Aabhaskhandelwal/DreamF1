@@ -6,6 +6,7 @@ import { fetchStandings, type StandingsData, type DriverStanding } from "@/lib/s
 import { teamColor } from "@/lib/design"
 import DriverAvatar from "@/components/DriverAvatar"
 import TeamLogo from "@/components/TeamLogo"
+import CarImage from "@/components/CarImage"
 
 const RANK_COLOR: Record<number, string> = { 1: "#ffd700", 2: "#c0c0c0", 3: "#cd7f32" }
 
@@ -122,11 +123,11 @@ export default function StandingsCard() {
         {/* Constructors' leader */}
         {cLeader && (
           <div
-            className="flex items-center gap-3 p-3 rounded-md bg-surface-1/60"
+            className="relative flex items-center gap-3 p-3 rounded-md bg-surface-1/60 overflow-hidden"
             style={{ boxShadow: `inset 3px 0 0 ${teamColor(cLeader.team_slug)}` }}
           >
             <TeamLogo slug={cLeader.team_slug} size={36} />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 relative z-10">
               <p className="text-[0.5rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-dim mb-0.5">
                 Constructors&apos; Leader
               </p>
@@ -137,7 +138,12 @@ export default function StandingsCard() {
                 {cGap > 0 ? `+${cGap} over ${cRunnerUp}` : "tied lead"} · {cLeader.wins} wins
               </p>
             </div>
-            <span className="font-(family-name:--font-orbitron) text-2xl font-black text-text-primary tabular-nums shrink-0">
+            {/* Leading team's car — faded backdrop on the right */}
+            <CarImage
+              slug={cLeader.team_slug}
+              className="absolute right-1 bottom-0 h-14 w-auto opacity-25 pointer-events-none select-none"
+            />
+            <span className="relative z-10 font-(family-name:--font-orbitron) text-2xl font-black text-text-primary tabular-nums shrink-0">
               {cLeader.points}
             </span>
           </div>
