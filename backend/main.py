@@ -1027,6 +1027,10 @@ def get_race_control(year: int, round_num: int):
                 return 'steward'
             if 'DRS' in u:
                 return 'drs'
+            # Red-flag suspensions arrive with an empty Flag column — catch the
+            # text, with a word boundary so "CHEQUERED FLAG" can't match "RED FLAG".
+            if re.search(r'\bRED FLAG', u) and 'INFRINGEMENT' not in u:
+                return 'flag'
             if flag in ('YELLOW', 'DOUBLE YELLOW', 'RED', 'BLUE', 'CHEQUERED', 'GREEN', 'CLEAR'):
                 return 'flag'
             return 'other'
@@ -1074,7 +1078,14 @@ def get_race_control(year: int, round_num: int):
         summary = {
             "total": len(messages),
             "yellow_flags": yellow_periods,
-            "red_flags": count(lambda m: m['flag'] == 'RED'),
+            # FastF1 sometimes leaves the Flag column empty for a red flag and
+            # only writes "RED FLAG - RACE SUSPENDED" in the text — match both,
+            # but exclude stewards' "RED FLAG INFRINGEMENT" follow-ups.
+            "red_flags": count(
+                lambda m: m['flag'] == 'RED'
+                or bool(re.search(r'\bRED FLAG', up(m))) and 'INFRINGEMENT' not in up(m)
+                and 'NOTED' not in up(m) and 'INVESTIGAT' not in up(m)
+            ),
             # FastF1 writes "SAFETY CAR DEPLOYED" for a full SC and "VSC DEPLOYED"
             # (abbreviated) for a virtual one — match both spellings explicitly.
             "safety_car": count(lambda m: 'SAFETY CAR DEPLOYED' in up(m) and 'VIRTUAL' not in up(m)),
