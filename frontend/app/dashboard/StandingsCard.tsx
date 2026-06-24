@@ -100,8 +100,11 @@ export default function StandingsCard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Drivers' leader */}
         <div
-          className="flex items-center gap-3 p-3 rounded-md bg-surface-1/60"
-          style={{ boxShadow: `inset 3px 0 0 ${teamColor(dLeader.team_slug)}` }}
+          className="flex items-center gap-3 p-3 rounded-md overflow-hidden"
+          style={{
+            background: `linear-gradient(110deg, ${teamColor(dLeader.team_slug)}26 0%, ${teamColor(dLeader.team_slug)}08 40%, transparent 64%)`,
+            boxShadow: `inset 3px 0 0 ${teamColor(dLeader.team_slug)}`,
+          }}
         >
           <DriverAvatar code={dLeader.code} slug={dLeader.team_slug} size={44} />
           <div className="min-w-0 flex-1">
@@ -120,13 +123,16 @@ export default function StandingsCard() {
           </span>
         </div>
 
-        {/* Constructors' leader */}
+        {/* Constructors' leader — car on a team-coloured stage */}
         {cLeader && (
           <div
-            className="relative flex items-center gap-3 p-3 rounded-md bg-surface-1/60 overflow-hidden"
-            style={{ boxShadow: `inset 3px 0 0 ${teamColor(cLeader.team_slug)}` }}
+            className="relative flex items-center gap-3 p-3 rounded-md overflow-hidden min-h-[88px]"
+            style={{
+              background: `linear-gradient(110deg, ${teamColor(cLeader.team_slug)}30 0%, ${teamColor(cLeader.team_slug)}0a 42%, transparent 66%)`,
+              boxShadow: `inset 3px 0 0 ${teamColor(cLeader.team_slug)}`,
+            }}
           >
-            <TeamLogo slug={cLeader.team_slug} size={36} />
+            <TeamLogo slug={cLeader.team_slug} size={32} />
             <div className="min-w-0 flex-1 relative z-10">
               <p className="text-[0.5rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-dim mb-0.5">
                 Constructors&apos; Leader
@@ -134,18 +140,23 @@ export default function StandingsCard() {
               <p className="font-(family-name:--font-orbitron) text-sm font-bold text-text-primary truncate">
                 {cLeader.team}
               </p>
-              <p className="text-[0.58rem] font-(family-name:--font-dm-mono) text-text-muted">
-                {cGap > 0 ? `+${cGap} over ${cRunnerUp}` : "tied lead"} · {cLeader.wins} wins
+              <p className="flex items-baseline gap-2 mt-0.5">
+                <span className="font-(family-name:--font-orbitron) text-2xl font-black text-text-primary tabular-nums leading-none">
+                  {cLeader.points}
+                </span>
+                <span className="text-[0.55rem] font-(family-name:--font-dm-mono) text-text-muted">
+                  {cGap > 0 ? `+${cGap} · ${cLeader.wins}W` : `tied · ${cLeader.wins}W`}
+                </span>
               </p>
             </div>
-            {/* Leading team's car — faded backdrop on the right */}
-            <CarImage
-              slug={cLeader.team_slug}
-              className="absolute right-1 bottom-0 h-14 w-auto opacity-25 pointer-events-none select-none"
-            />
-            <span className="relative z-10 font-(family-name:--font-orbitron) text-2xl font-black text-text-primary tabular-nums shrink-0">
-              {cLeader.points}
-            </span>
+            {/* Crisp, grounded car bleeding off the right edge */}
+            <div className="absolute right-0 bottom-0 top-0 w-1/2 pointer-events-none select-none">
+              <div className="absolute right-3 bottom-1.5 h-1.5 w-32 max-w-[70%] rounded-[100%] bg-black/55 blur-[6px]" />
+              <CarImage
+                slug={cLeader.team_slug}
+                className="absolute right-0 bottom-2 h-12 w-auto object-contain drop-shadow-[0_6px_9px_rgba(0,0,0,0.6)]"
+              />
+            </div>
           </div>
         )}
       </div>

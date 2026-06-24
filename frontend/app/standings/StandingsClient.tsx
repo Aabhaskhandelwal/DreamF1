@@ -10,10 +10,75 @@ import {
 import { teamColor } from "@/lib/design"
 import DriverAvatar from "@/components/DriverAvatar"
 import TeamLogo from "@/components/TeamLogo"
+import CarImage from "@/components/CarImage"
 
 type View = "drivers" | "constructors"
 
 const RANK_COLOR: Record<number, string> = { 1: "#ffd700", 2: "#c0c0c0", 3: "#cd7f32" }
+
+/** Top-3 constructors as car-on-stage showcase cards. */
+function ConstructorsPodium({ rows }: { rows: ConstructorStanding[] }) {
+  const top3 = rows.slice(0, 3)
+  if (top3.length < 3) return null
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {top3.map((c) => {
+        const color = teamColor(c.team_slug)
+        const medal = RANK_COLOR[c.position]
+        return (
+          <div
+            key={c.team_slug || c.position}
+            className="relative glass-card overflow-hidden p-4 flex flex-col"
+            style={{
+              background: `linear-gradient(165deg, ${color}26 0%, ${color}0a 46%, var(--color-surface-1) 100%)`,
+              boxShadow: c.position === 1 ? `inset 0 0 0 1px ${medal}40` : undefined,
+            }}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-full font-(family-name:--font-orbitron) text-sm font-bold text-surface-0"
+                style={{ background: medal, boxShadow: `0 0 12px ${medal}55` }}
+              >
+                {c.position}
+              </span>
+              <TeamLogo slug={c.team_slug} size={22} />
+            </div>
+
+            <p className="font-(family-name:--font-orbitron) text-base font-bold truncate" style={{ color }}>
+              {c.team}
+            </p>
+            <p className="flex items-baseline gap-1.5">
+              <span className="font-(family-name:--font-orbitron) text-3xl font-black text-text-primary tabular-nums leading-none">
+                {c.points}
+              </span>
+              <span className="text-[0.55rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-muted">
+                pts
+              </span>
+            </p>
+
+            {/* Car on a grounded stage */}
+            <div className="relative h-20 sm:h-24 my-2">
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-2 h-2 w-3/4 rounded-[100%] bg-black/55 blur-md" />
+              <CarImage
+                slug={c.team_slug}
+                className="absolute inset-0 m-auto max-h-full w-auto object-contain drop-shadow-[0_10px_14px_rgba(0,0,0,0.6)]"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 text-[0.58rem] font-(family-name:--font-dm-mono) text-text-muted">
+              <span><span className="text-text-secondary tabular-nums">{c.wins}</span> W</span>
+              <span><span className="text-text-secondary tabular-nums">{c.podiums}</span> Pod</span>
+              <span><span className="text-text-secondary tabular-nums">{c.poles}</span> Pole</span>
+              {c.gap_to_leader > 0 && (
+                <span className="ml-auto tabular-nums">-{c.gap_to_leader}</span>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function Num({ value, dim }: { value: string | number; dim?: boolean }) {
   return (
@@ -243,6 +308,8 @@ export default function StandingsClient() {
           ))}
         </div>
       </div>
+
+      {view === "constructors" && <ConstructorsPodium rows={data.constructors} />}
 
       <div className="glass-card overflow-hidden">
         {view === "drivers"
