@@ -5,6 +5,7 @@ import Link from "next/link"
 import { TEAM_COLORS } from "@/lib/design"
 import DriverSelect from "./DriverSelect"
 import DriverAvatar from "@/components/DriverAvatar"
+import FormGuide from "./FormGuide"
 import type { F1Event } from "../dashboard/page"
 
 interface PredictionSlot {
@@ -308,6 +309,8 @@ export default function PredictClient({
   return (
     <div className="space-y-6">
       <RaceHeader event={nextRace} formattedDate={formattedDate} />
+
+      <FormGuide />
 
       {loadingExisting ? (
         <div className="glass-card p-6 animate-pulse">
