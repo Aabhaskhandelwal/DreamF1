@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import type { F1Event } from "./page"
 import { FLAG_CODES, parseUTC } from "@/lib/trackData"
+import { getCircuitFacts } from "@/lib/circuits"
 
 interface TimeLeft {
   days: number
@@ -55,14 +56,19 @@ function getSessions(event: F1Event): Session[] {
 
 function CountdownUnit({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex flex-col items-center" style={{ gap: "3px" }}>
+    <div
+      className="flex flex-col items-center rounded-md border border-border-default bg-surface-2/70
+                 px-2.5 sm:px-4 md:px-5 pt-1.5 pb-1 sm:pt-2.5 sm:pb-1.5
+                 min-w-[3.1rem] sm:min-w-[4.4rem] md:min-w-[5.4rem]"
+      style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.35)" }}
+    >
       <span
-        className="font-(family-name:--font-orbitron) text-[3.25rem] sm:text-[4.5rem] md:text-[6rem] font-black
+        className="font-(family-name:--font-orbitron) text-[2.6rem] sm:text-[3.75rem] md:text-[4.75rem] font-black
                    tabular-nums text-text-primary leading-none"
       >
         {value}
       </span>
-      <span className="text-[0.42rem] sm:text-[0.46rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.22em] text-text-dim">
+      <span className="mt-1 text-[0.4rem] sm:text-[0.46rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.22em] text-text-dim">
         {label}
       </span>
     </div>
@@ -71,8 +77,8 @@ function CountdownUnit({ value, label }: { value: string; label: string }) {
 
 const SEP = (
   <span
-    className="font-(family-name:--font-orbitron) text-[1.75rem] sm:text-[2.5rem] md:text-[3.5rem]
-               font-black text-border-muted leading-none self-end mb-[0.7rem] sm:mb-[0.95rem] md:mb-[1.3rem]"
+    className="font-(family-name:--font-orbitron) text-[1.6rem] sm:text-[2.4rem] md:text-[3.25rem]
+               font-black text-f1-red/45 leading-none self-center"
   >
     :
   </span>
@@ -100,11 +106,19 @@ function Countdown({ sessions, fallback }: { sessions: Session[]; fallback: numb
   const fmt = (n: number) => String(n).padStart(2, "0")
 
   return (
-    <div className="space-y-2" suppressHydrationWarning>
-      <p className="text-[0.58rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.2em] text-f1-red h-3">
-        {nextSession ? `Counting down to ${nextSession.abbrev}` : ""}
+    <div className="space-y-2.5" suppressHydrationWarning>
+      <p className="flex items-center gap-2 text-[0.58rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.2em] text-f1-red h-3">
+        {nextSession && (
+          <>
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-f1-red opacity-75 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-f1-red" />
+            </span>
+            {`Counting down to ${nextSession.abbrev}`}
+          </>
+        )}
       </p>
-      <div className="flex items-end gap-1 sm:gap-2 md:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3">
         <CountdownUnit value={t ? fmt(t.days) : "--"} label="DAYS" />
         {SEP}
         <CountdownUnit value={t ? fmt(t.hours) : "--"} label="HRS" />
@@ -134,10 +148,18 @@ export default function NextRaceCard({ event }: Props) {
   const formattedDate = new Date(event.event_date + "T12:00:00Z").toLocaleDateString("en-GB", {
     day: "numeric", month: "long", year: "numeric",
   })
+  const facts = getCircuitFacts(event.country, event.event_name)
+  const lockSession = sessions[0] // picks lock when the first session (FP1) starts
 
   return (
-    <div className="glass-card-accent overflow-hidden h-full flex flex-col">
-      <div className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-4 sm:gap-6">
+    <div className="glass-card-accent relative overflow-hidden h-full flex flex-col">
+      {/* Ambient red bloom — depth without re-adding the track map */}
+      <div
+        aria-hidden
+        className="absolute -top-24 -right-20 w-80 h-80 rounded-full opacity-[0.09] blur-[90px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, #ED1131 0%, transparent 70%)" }}
+      />
+      <div className="relative flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-4 sm:gap-6">
         {/* Race header */}
         <div>
           <p className="section-label mb-2.5 text-f1-red">
@@ -158,8 +180,18 @@ export default function NextRaceCard({ event }: Props) {
             </h2>
           </div>
           <p className="text-text-muted text-xs font-(family-name:--font-dm-mono)">
-            {event.country} · {formattedDate}
+            {facts?.name ? `${facts.name} · ` : ""}{event.country} · {formattedDate}
           </p>
+
+          {/* Circuit facts strip */}
+          {facts && (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3">
+              <Fact label="Length" value={`${facts.length_km} km`} />
+              <Fact label="Laps" value={`${facts.laps}`} />
+              <Fact label="Distance" value={`${Math.round(facts.length_km * facts.laps)} km`} />
+              <Fact label="First GP" value={`${facts.first_gp}`} />
+            </div>
+          )}
         </div>
 
         {/* Giant countdown — isolated ticker */}
@@ -174,17 +206,18 @@ export default function NextRaceCard({ event }: Props) {
               return (
                 <div
                   key={s.name}
-                  className={`flex items-center justify-between py-1.5 px-2 border-b border-border-subtle
-                              ${isPast ? "opacity-25" : ""}`}
+                  className={`flex items-center justify-between py-1.5 px-2 border-b border-border-subtle transition-colors
+                              ${isPast ? "opacity-25" : ""} ${isNext ? "bg-f1-red/[0.07]" : ""}`}
+                  style={isNext ? { boxShadow: "inset 2px 0 0 var(--color-f1-red)" } : undefined}
                 >
                   <span
                     className={`text-[0.62rem] font-(family-name:--font-dm-mono) uppercase tracking-widest
-                                ${isNext ? "text-f1-red" : isPast ? "text-text-dim" : "text-text-muted"}`}
+                                ${isNext ? "text-f1-red font-bold" : isPast ? "text-text-dim" : "text-text-muted"}`}
                   >
                     {s.abbrev}
                     {isNext && <span className="ml-2 text-[0.48rem] text-f1-red">▶ NEXT</span>}
                   </span>
-                  <span className="text-[0.62rem] font-(family-name:--font-dm-mono) text-text-dim tabular-nums">
+                  <span className={`text-[0.62rem] font-(family-name:--font-dm-mono) tabular-nums ${isNext ? "text-text-secondary" : "text-text-dim"}`}>
                     {mounted
                       ? s.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
                         + " · "
@@ -198,7 +231,7 @@ export default function NextRaceCard({ event }: Props) {
         )}
 
         {/* CTA — suppressed until mounted to avoid hydration mismatch */}
-        {!mounted ? null : sessions[0] && sessions[0].date.getTime() < Date.now() ? (
+        {!mounted ? null : lockSession && lockSession.date.getTime() < Date.now() ? (
           <span
             className="self-start px-5 py-2.5 text-xs font-(family-name:--font-dm-mono)
                        uppercase tracking-widest text-text-dim border border-border-subtle
@@ -207,16 +240,39 @@ export default function NextRaceCard({ event }: Props) {
             Predictions Closed
           </span>
         ) : (
-          <Link
-            href="/predict"
-            className="self-start px-5 py-2.5 bg-f1-red text-white text-xs
-                       font-(family-name:--font-dm-mono) uppercase tracking-widest
-                       hover:bg-f1-red-dark transition-colors"
-          >
-            Lock Prediction →
-          </Link>
+          <div className="flex flex-col gap-1.5">
+            <Link
+              href="/predict"
+              className="self-start px-5 py-2.5 bg-f1-red text-white text-xs
+                         font-(family-name:--font-dm-mono) uppercase tracking-widest
+                         hover:bg-f1-red-dark transition-colors"
+            >
+              Lock Prediction →
+            </Link>
+            {mounted && lockSession && (
+              <p className="text-[0.55rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-widest">
+                Picks lock at {lockSession.abbrev} ·{" "}
+                {lockSession.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                {", "}
+                {lockSession.date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[0.46rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.18em] text-text-dim leading-none">
+        {label}
+      </span>
+      <span className="font-(family-name:--font-orbitron) text-sm font-bold text-text-secondary tabular-nums leading-none">
+        {value}
+      </span>
     </div>
   )
 }
