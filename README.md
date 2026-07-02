@@ -159,9 +159,4 @@ ALGORITHM=HS256
 
 ## Contributing
 
-1. Fork the repo and clone it
-2. Create a branch: `git checkout -b feature/your-feature`
-3. Make your changes and commit: `git commit -m "feat: describe what this does"`
-4. Open a PR — describe what you changed and why
-
-For bugs, open an issue first. For bigger ideas, start a discussion.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the golden rules of the prediction logic, and [good first issues](https://github.com/Aabhaskhandelwal/DreamF1/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) to start with.
