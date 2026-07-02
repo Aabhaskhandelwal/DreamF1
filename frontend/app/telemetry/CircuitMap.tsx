@@ -23,6 +23,8 @@ function GlowMap({ x, y }: { x: number[]; y: number[] }) {
   const vbW = xMax - xMin + pad * 2
   const vbH = yMax - yMin + pad * 2
   const pts = x.map((v, i) => `${v},${ys[i]}`).join(" ")
+  // Same outline as an SVG path — used by the lapping-car animateMotion
+  const d = x.map((v, i) => `${i === 0 ? "M" : "L"}${v},${ys[i]}`).join(" ") + " Z"
 
   const T = size * 0.008
   const coreW = T * 0.5, rimW = T * 1.4, glow1W = T * 3.5, glow2W = T * 9, auraW = T * 22
@@ -54,9 +56,26 @@ function GlowMap({ x, y }: { x: number[]; y: number[] }) {
       <polyline points={pts} fill="none" stroke="#ffffff" strokeWidth={glow1W} strokeLinecap="round" strokeLinejoin="round" opacity={0.18} filter="url(#g1)" />
       <polyline points={pts} fill="none" stroke="#0a0a0a" strokeWidth={rimW * 1.1} strokeLinecap="round" strokeLinejoin="round" />
       <polyline points={pts} fill="none" stroke="#e8e8e8" strokeWidth={rimW} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} filter="url(#g1)" />
-      <polyline points={pts} fill="none" stroke="#ffffff" strokeWidth={coreW} strokeLinecap="round" strokeLinejoin="round" opacity={0.95} />
+      {/* Core line draws itself in on mount (pathLength trick) */}
+      <polyline
+        points={pts}
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth={coreW}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.95}
+        pathLength={1}
+        strokeDasharray={1}
+        className="track-draw"
+      />
       <line x1={x[0] + nx} y1={ys[0] + ny} x2={x[0] - nx} y2={ys[0] - ny} stroke="#ED1131" strokeWidth={coreW * 4} strokeLinecap="round" opacity={0.95} filter="url(#g1)" />
       <line x1={x[0] + nx} y1={ys[0] + ny} x2={x[0] - nx} y2={ys[0] - ny} stroke="#ffffff" strokeWidth={coreW * 1.5} strokeLinecap="round" opacity={0.9} />
+
+      {/* A car lapping the circuit — follows the real GPS path forever */}
+      <circle r={T * 1.1} fill="#ED1131" opacity={0.95} filter="url(#g1)">
+        <animateMotion dur="14s" repeatCount="indefinite" begin="2.2s" path={d} />
+      </circle>
     </svg>
   )
 }

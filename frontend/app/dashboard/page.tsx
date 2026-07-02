@@ -6,6 +6,7 @@ import StandingsCard from "./StandingsCard"
 import SeasonSnapshot from "./SeasonSnapshot"
 import SeasonProgress from "./SeasonProgress"
 import NavHeader from "@/components/NavHeader"
+import Reveal from "@/components/Reveal"
 import { FLAG_CODES, getTrackImage } from "@/lib/trackData"
 
 export const dynamic = "force-dynamic"
@@ -89,7 +90,7 @@ export default async function DashboardPage() {
 
       {/* ── Bento row 1: hero (2/3) + circuit history (1/3) ── */}
       <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+        <Reveal className="lg:col-span-2">
           {nextRace ? (
             <NextRaceCard event={nextRace} />
           ) : (
@@ -97,9 +98,9 @@ export default async function DashboardPage() {
               <p className="section-label text-text-dim">Season Complete</p>
             </div>
           )}
-        </div>
+        </Reveal>
 
-        <div className="lg:col-span-1">
+        <Reveal delay={120} className="lg:col-span-1 h-full">
           {lastRace ? (
             <CircuitHistory year={2026} roundNum={lastRace.round_number} />
           ) : (
@@ -110,35 +111,35 @@ export default async function DashboardPage() {
               </p>
             </div>
           )}
-        </div>
+        </Reveal>
       </div>
 
       {/* ── Your season (logged-in only) ── */}
       <SeasonSnapshot />
 
       {/* ── Championship standings ── */}
-      <div className="mt-4">
+      <Reveal className="mt-4">
         <StandingsCard />
-      </div>
+      </Reveal>
 
       {/* ── Season progress ── */}
-      <div className="mt-4">
+      <Reveal delay={80} className="mt-4">
         <SeasonProgress
           events={events}
           completed={completedCount}
           remaining={remainingCount}
           nextRace={nextRace}
         />
-      </div>
+      </Reveal>
 
       {/* ── My Circles ── */}
-      <div className="mt-4">
+      <Reveal delay={80} className="mt-4">
         <CirclesOverview />
-      </div>
+      </Reveal>
 
       {/* ── Upcoming races strip ── */}
       {upcomingAfterNext.length > 0 && (
-        <div className="mt-6">
+        <Reveal delay={60} className="mt-6">
           <p className="section-label mb-3">Up Next</p>
           <div className="flex gap-3 overflow-x-auto pb-1">
             {upcomingAfterNext.map((race) => {
@@ -151,7 +152,7 @@ export default async function DashboardPage() {
                 day: "numeric", month: "short", timeZone: "UTC",
               })
               return (
-                <div key={race.id} className="glass-card shrink-0 w-52 p-4 flex flex-col gap-3">
+                <div key={race.id} className="glass-card hover-lift shrink-0 w-52 p-4 flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -178,7 +179,7 @@ export default async function DashboardPage() {
               )
             })}
           </div>
-        </div>
+        </Reveal>
       )}
     </div>
   )

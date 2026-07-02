@@ -166,4 +166,44 @@ html, body {
     border-radius: 4px;
     padding: 0.5rem 0.75rem;
   }
+
+  /* Interactive-card lift — apply alongside .glass-card on clickable cards */
+  .hover-lift {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.35s ease,
+      box-shadow 0.35s ease;
+  }
+  @media (hover: hover) {
+    .hover-lift:hover {
+      transform: translateY(-3px);
+      border-color: #333;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+  }
+}
+
+/* ── Motion ───────────────────────────────────────────────────── */
+@keyframes tab-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-tab-in { animation: tab-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-page-in { animation: page-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* SVG track outline draws itself in (requires pathLength=1 + dasharray 1) */
+@keyframes track-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.track-draw { animation: track-draw 2.2s cubic-bezier(0.45, 0, 0.25, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tab-in, .animate-page-in, .track-draw { animation: none; }
+  .hover-lift, .hover-lift:hover { transform: none; transition: none; }
 }

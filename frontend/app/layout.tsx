@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Orbitron, DM_Mono, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import Footer from "@/components/Footer";
+import Preloader from "@/components/Preloader";
+import SmoothScroll from "@/components/SmoothScroll";
 import "./globals.css";
 
 const f1Regular = localFont({
@@ -44,6 +46,8 @@ export default function RootLayout({
       className={`${f1Regular.variable} ${orbitron.variable} ${dmMono.variable} ${dmSans.variable}`}
     >
       <body className="min-h-screen bg-[#0a0a0a] text-[#f3f3f3] antialiased">
+        <Preloader />
+        <SmoothScroll />
         {children}
         <Footer />
       </body>
