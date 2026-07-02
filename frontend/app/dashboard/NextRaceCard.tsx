@@ -159,6 +159,33 @@ export default function NextRaceCard({ event }: Props) {
         className="absolute -top-24 -right-20 w-80 h-80 rounded-full opacity-[0.09] blur-[90px] pointer-events-none"
         style={{ background: "radial-gradient(circle, #ED1131 0%, transparent 70%)" }}
       />
+
+      {/* Decorative circuit ribbon — draws in, then a car light laps it forever */}
+      <svg
+        aria-hidden
+        viewBox="0 0 280 140"
+        className="absolute -right-6 top-3 w-64 sm:w-80 pointer-events-none select-none opacity-[0.16] hidden sm:block"
+      >
+        <path
+          id="hero-track"
+          d="M20,60 C20,30 50,20 90,20 L200,20 C230,20 240,35 220,45 L160,70 C145,77 150,95 170,95 L240,95 C270,95 270,120 240,120 L60,120 C30,120 20,90 20,60 Z"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={2}
+          strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray={1}
+          className="track-draw"
+        />
+        <circle r={3.5} fill="#ED1131">
+          <animateMotion
+            dur="9s"
+            repeatCount="indefinite"
+            begin="2.2s"
+            path="M20,60 C20,30 50,20 90,20 L200,20 C230,20 240,35 220,45 L160,70 C145,77 150,95 170,95 L240,95 C270,95 270,120 240,120 L60,120 C30,120 20,90 20,60 Z"
+          />
+        </circle>
+      </svg>
       <div className="relative flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-4 sm:gap-6">
         {/* Race header */}
         <div>

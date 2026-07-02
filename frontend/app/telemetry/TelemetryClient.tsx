@@ -271,7 +271,7 @@ export default function TelemetryClient({
           ))}
         </div>
       ) : (
-        <>
+        <div key={tab} className="animate-tab-in">
           {tab === "race" && (
             summary
               ? <RaceClassification results={summary.results} />
@@ -347,7 +347,7 @@ export default function TelemetryClient({
             raceControl ? <RaceControl data={raceControl} /> :
             <EmptyState message="Race control data not available for this round." />
           )}
-        </>
+        </div>
       )}
     </div>
   )
