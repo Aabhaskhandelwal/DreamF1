@@ -19,16 +19,23 @@ const TRACK_IMAGES_MAP: Record<string, string> = {
 }
 
 export function getTrackImage(country: string, eventName: string): string | null {
+  const n = eventName.toLowerCase()
   if (country === "United States") {
-    const n = eventName.toLowerCase()
     if (n.includes("miami")) return "/assets/tracks/Miami.png"
     if (n.includes("las vegas")) return "/assets/tracks/LasVegas.png"
     return "/assets/tracks/UnitedStates.png"
   }
   if (country === "Italy") {
-    const n = eventName.toLowerCase()
     if (n.includes("emilia") || n.includes("imola")) return "/assets/tracks/Imola.png"
     return "/assets/tracks/Italy.png"
+  }
+  if (country === "Spain") {
+    // Two Spanish rounds in 2026: "Barcelona GP" (Catalunya) and the
+    // "Spanish GP" at the new Madrid circuit, which has no simple outline —
+    // use its detailed diagram instead of silently showing Catalunya.
+    if (n.includes("madrid") || n.includes("spanish"))
+      return "/assets/2026tracks/2026trackmadringdetailed.avif"
+    return "/assets/tracks/Spain.png"
   }
   const key = TRACK_IMAGES_MAP[country]
   return key ? `/assets/tracks/${key}.png` : null

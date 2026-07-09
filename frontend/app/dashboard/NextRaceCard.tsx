@@ -56,19 +56,14 @@ function getSessions(event: F1Event): Session[] {
 
 function CountdownUnit({ value, label }: { value: string; label: string }) {
   return (
-    <div
-      className="flex flex-col items-center rounded-md border border-border-default bg-surface-2/70
-                 px-2.5 sm:px-4 md:px-5 pt-1.5 pb-1 sm:pt-2.5 sm:pb-1.5
-                 min-w-[3.1rem] sm:min-w-[4.4rem] md:min-w-[5.4rem]"
-      style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.35)" }}
-    >
+    <div className="flex flex-col items-center" style={{ gap: "3px" }}>
       <span
-        className="font-(family-name:--font-orbitron) text-[2.6rem] sm:text-[3.75rem] md:text-[4.75rem] font-black
+        className="font-(family-name:--font-orbitron) text-[3.25rem] sm:text-[4.5rem] md:text-[6rem] font-black
                    tabular-nums text-text-primary leading-none"
       >
         {value}
       </span>
-      <span className="mt-1 text-[0.4rem] sm:text-[0.46rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.22em] text-text-dim">
+      <span className="text-[0.42rem] sm:text-[0.46rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.22em] text-text-dim">
         {label}
       </span>
     </div>
@@ -77,8 +72,8 @@ function CountdownUnit({ value, label }: { value: string; label: string }) {
 
 const SEP = (
   <span
-    className="font-(family-name:--font-orbitron) text-[1.6rem] sm:text-[2.4rem] md:text-[3.25rem]
-               font-black text-f1-red/45 leading-none self-center"
+    className="font-(family-name:--font-orbitron) text-[1.75rem] sm:text-[2.5rem] md:text-[3.5rem]
+               font-black text-border-muted leading-none self-end mb-[0.7rem] sm:mb-[0.95rem] md:mb-[1.3rem]"
   >
     :
   </span>
@@ -106,19 +101,11 @@ function Countdown({ sessions, fallback }: { sessions: Session[]; fallback: numb
   const fmt = (n: number) => String(n).padStart(2, "0")
 
   return (
-    <div className="space-y-2.5" suppressHydrationWarning>
-      <p className="flex items-center gap-2 text-[0.58rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.2em] text-f1-red h-3">
-        {nextSession && (
-          <>
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-f1-red opacity-75 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-f1-red" />
-            </span>
-            {`Counting down to ${nextSession.abbrev}`}
-          </>
-        )}
+    <div className="space-y-2" suppressHydrationWarning>
+      <p className="text-[0.58rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.2em] text-f1-red h-3">
+        {nextSession ? `Counting down to ${nextSession.abbrev}` : ""}
       </p>
-      <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3">
+      <div className="flex items-end gap-1 sm:gap-2 md:gap-3">
         <CountdownUnit value={t ? fmt(t.days) : "--"} label="DAYS" />
         {SEP}
         <CountdownUnit value={t ? fmt(t.hours) : "--"} label="HRS" />
@@ -152,41 +139,8 @@ export default function NextRaceCard({ event }: Props) {
   const lockSession = sessions[0] // picks lock when the first session (FP1) starts
 
   return (
-    <div className="glass-card-accent relative overflow-hidden h-full flex flex-col">
-      {/* Ambient red bloom — depth without re-adding the track map */}
-      <div
-        aria-hidden
-        className="absolute -top-24 -right-20 w-80 h-80 rounded-full opacity-[0.09] blur-[90px] pointer-events-none"
-        style={{ background: "radial-gradient(circle, #ED1131 0%, transparent 70%)" }}
-      />
-
-      {/* Decorative circuit ribbon — draws in, then a car light laps it forever */}
-      <svg
-        aria-hidden
-        viewBox="0 0 280 140"
-        className="absolute -right-6 top-3 w-64 sm:w-80 pointer-events-none select-none opacity-[0.16] hidden sm:block"
-      >
-        <path
-          id="hero-track"
-          d="M20,60 C20,30 50,20 90,20 L200,20 C230,20 240,35 220,45 L160,70 C145,77 150,95 170,95 L240,95 C270,95 270,120 240,120 L60,120 C30,120 20,90 20,60 Z"
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth={2}
-          strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={1}
-          className="track-draw"
-        />
-        <circle r={3.5} fill="#ED1131">
-          <animateMotion
-            dur="9s"
-            repeatCount="indefinite"
-            begin="2.2s"
-            path="M20,60 C20,30 50,20 90,20 L200,20 C230,20 240,35 220,45 L160,70 C145,77 150,95 170,95 L240,95 C270,95 270,120 240,120 L60,120 C30,120 20,90 20,60 Z"
-          />
-        </circle>
-      </svg>
-      <div className="relative flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-4 sm:gap-6">
+    <div className="glass-card-accent overflow-hidden h-full flex flex-col">
+      <div className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-4 sm:gap-6">
         {/* Race header */}
         <div>
           <p className="section-label mb-2.5 text-f1-red">

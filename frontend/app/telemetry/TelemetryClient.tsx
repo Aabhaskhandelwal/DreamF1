@@ -15,6 +15,7 @@ import CircuitMap, { type MapData } from "./CircuitMap"
 import RacePace, { type RacePaceData } from "./RacePace"
 import Weather, { type WeatherData } from "./Weather"
 import RaceControl, { type RaceControlData } from "./RaceControl"
+import { getTrackImage, parseUTC } from "@/lib/trackData"
 
 type Tab = "race" | "laptimes" | "racepace" | "positions" | "gaps" | "tyres" | "quali" | "sectors" | "speed" | "map" | "weather" | "racecontrol"
 
@@ -25,41 +26,10 @@ interface SpeedData { session: string; drivers: Record<string, { distance: numbe
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
 
-function parseUTC(iso: string | null): Date | null {
-  if (!iso) return null
-  return new Date(iso.endsWith("Z") ? iso : iso + "Z")
-}
-
 function fmtLapTime(s: number): string {
   const m = Math.floor(s / 60)
   const rem = (s % 60).toFixed(3).padStart(6, "0")
   return `${m}:${rem}`
-}
-
-const COUNTRY_TO_TRACK: Record<string, string> = {
-  Australia: "Australia", Bahrain: "Bahrain", "Saudi Arabia": "SaudiArabia",
-  Japan: "Japan", China: "China", Monaco: "Monaco", Spain: "Spain",
-  Canada: "Canada", Austria: "Austria", "Great Britain": "UnitedKingdom",
-  Hungary: "Hungary", Belgium: "Belgium", Netherlands: "Netherlands",
-  Azerbaijan: "Azerbaijan", Singapore: "Singapore", Mexico: "Mexico",
-  Brazil: "Brazil", Qatar: "Qatar", "Abu Dhabi": "UnitedArabEmirates",
-  "United Arab Emirates": "UnitedArabEmirates",
-}
-
-function getTrackImage(country: string, eventName: string): string | null {
-  if (country === "United States") {
-    const n = eventName.toLowerCase()
-    if (n.includes("miami")) return "/assets/tracks/Miami.png"
-    if (n.includes("las vegas")) return "/assets/tracks/LasVegas.png"
-    return "/assets/tracks/UnitedStates.png"
-  }
-  if (country === "Italy") {
-    const n = eventName.toLowerCase()
-    if (n.includes("emilia") || n.includes("imola")) return "/assets/tracks/Imola.png"
-    return "/assets/tracks/Italy.png"
-  }
-  const key = COUNTRY_TO_TRACK[country]
-  return key ? `/assets/tracks/${key}.png` : null
 }
 
 const TABS: { key: Tab; label: string }[] = [

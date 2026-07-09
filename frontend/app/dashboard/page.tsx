@@ -57,25 +57,7 @@ export default async function DashboardPage() {
   const lastRace = completedCount > 0 ? completed[completedCount - 1] : null
 
   return (
-    <div className="relative min-h-screen px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto">
-      {/* Ambient backdrop — red bloom + faint technical grid for depth */}
-      <div aria-hidden className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div
-          className="absolute -top-24 left-1/2 -translate-x-1/2 w-[90%] h-[460px] opacity-[0.08] blur-[110px]"
-          style={{ background: "radial-gradient(ellipse at center, #ED1131 0%, transparent 70%)" }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.025]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            maskImage: "radial-gradient(ellipse at 50% 0%, #000 0%, transparent 75%)",
-            WebkitMaskImage: "radial-gradient(ellipse at 50% 0%, #000 0%, transparent 75%)",
-          }}
-        />
-      </div>
-
+    <div className="min-h-screen px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto">
       <NavHeader active="dashboard" />
 
       {backendDown && (
