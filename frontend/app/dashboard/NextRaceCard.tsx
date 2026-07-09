@@ -58,7 +58,7 @@ function CountdownUnit({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center" style={{ gap: "3px" }}>
       <span
-        className="font-(family-name:--font-orbitron) text-[3.25rem] sm:text-[4.5rem] md:text-[6rem] font-black
+        className="font-(family-name:--font-orbitron) text-[2.75rem] sm:text-[3.75rem] md:text-[4.5rem] xl:text-[5.25rem] font-black
                    tabular-nums text-text-primary leading-none"
       >
         {value}
@@ -72,8 +72,8 @@ function CountdownUnit({ value, label }: { value: string; label: string }) {
 
 const SEP = (
   <span
-    className="font-(family-name:--font-orbitron) text-[1.75rem] sm:text-[2.5rem] md:text-[3.5rem]
-               font-black text-border-muted leading-none self-end mb-[0.7rem] sm:mb-[0.95rem] md:mb-[1.3rem]"
+    className="font-(family-name:--font-orbitron) text-[1.5rem] sm:text-[2rem] md:text-[2.5rem] xl:text-[3rem]
+               font-black text-border-muted leading-none self-end mb-[0.6rem] sm:mb-[0.8rem] md:mb-[0.95rem] xl:mb-[1.1rem]"
   >
     :
   </span>
@@ -102,7 +102,7 @@ function Countdown({ sessions, fallback }: { sessions: Session[]; fallback: numb
 
   return (
     <div className="space-y-2" suppressHydrationWarning>
-      <p className="text-[0.58rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.2em] text-f1-red h-3">
+      <p className="text-[0.58rem] font-(family-name:--font-dm-mono) uppercase tracking-[0.2em] text-text-muted h-3">
         {nextSession ? `Counting down to ${nextSession.abbrev}` : ""}
       </p>
       <div className="flex items-end gap-1 sm:gap-2 md:gap-3">
@@ -143,7 +143,7 @@ export default function NextRaceCard({ event }: Props) {
       <div className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col justify-between gap-4 sm:gap-6">
         {/* Race header */}
         <div>
-          <p className="section-label mb-2.5 text-f1-red">
+          <p className="section-label mb-2.5">
             Round {event.round_number} · Race Weekend
           </p>
           <div className="flex items-center gap-3 mb-1.5">

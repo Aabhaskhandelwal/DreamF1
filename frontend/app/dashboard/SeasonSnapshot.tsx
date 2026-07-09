@@ -10,10 +10,7 @@ interface Pred {
 
 function Stat({ value, label, accent }: { value: string | number; label: string; accent?: string }) {
   return (
-    <div
-      className="flex flex-col gap-1 pl-3 py-1 rounded-sm bg-surface-1/40"
-      style={{ boxShadow: `inset 2px 0 0 ${accent ?? "var(--color-border-muted)"}` }}
-    >
+    <div className="flex flex-col gap-1 pl-3 py-1 rounded-sm bg-surface-1/40 border-l border-border-muted">
       <span
         className="font-(family-name:--font-orbitron) text-2xl font-black tabular-nums leading-none"
         style={{ color: accent ?? "var(--color-text-primary)" }}

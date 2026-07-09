@@ -120,7 +120,7 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
   return (
     <div className="glass-card h-full p-5 flex flex-col gap-4">
       <div>
-        <p className="section-label text-f1-red mb-1.5">Last Race · {data.year}</p>
+        <p className="section-label mb-1.5">Last Race · {data.year}</p>
         <p className="font-(family-name:--font-orbitron) text-sm font-bold text-text-primary leading-snug line-clamp-2">
           {data.event_name ?? "—"}
         </p>
@@ -172,7 +172,7 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
           </span>
         </Stat>
         <Stat label="Safety Car">
-          <span className={`text-[0.65rem] font-(family-name:--font-dm-mono) ${data.safety_car ? "text-f1-red" : "text-text-muted"}`}>
+          <span className="text-[0.65rem] font-(family-name:--font-dm-mono) text-text-secondary">
             {data.safety_car ? "Deployed" : "None"}
           </span>
         </Stat>
@@ -187,12 +187,12 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
       {data.incidents && (() => {
         const inc = data.incidents
         const chips = [
-          { label: "Yellow", v: inc.yellow_flags, c: "#facc15" },
-          { label: "Red", v: inc.red_flags, c: "#ED1131" },
-          { label: "SC", v: inc.safety_car, c: "#facc15" },
-          { label: "VSC", v: inc.virtual_sc, c: "#f59e0b" },
-          { label: "Penalties", v: inc.penalties, c: "#ED1131" },
-          { label: "Investig.", v: inc.investigations, c: "#f59e0b" },
+          { label: "Yellow", v: inc.yellow_flags },
+          { label: "Red", v: inc.red_flags },
+          { label: "SC", v: inc.safety_car },
+          { label: "VSC", v: inc.virtual_sc },
+          { label: "Penalties", v: inc.penalties },
+          { label: "Investig.", v: inc.investigations },
         ].filter((x) => x.v > 0)
         if (chips.length === 0) return null
         return (
@@ -203,7 +203,7 @@ export default function CircuitHistory({ year, roundNum }: { year: number; round
             <div className="flex flex-wrap gap-1.5">
               {chips.map((x) => (
                 <span key={x.label} className="flex items-center gap-1 px-2 py-1 rounded-sm border border-border-subtle">
-                  <span className="font-(family-name:--font-orbitron) text-[0.7rem] font-bold tabular-nums" style={{ color: x.c }}>{x.v}</span>
+                  <span className="font-(family-name:--font-orbitron) text-[0.7rem] font-bold tabular-nums text-text-primary">{x.v}</span>
                   <span className="text-[0.55rem] font-(family-name:--font-dm-mono) text-text-dim uppercase tracking-wider">{x.label}</span>
                 </span>
               ))}

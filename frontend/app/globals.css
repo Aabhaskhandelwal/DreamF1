@@ -123,10 +123,11 @@ html, body {
     backdrop-filter: blur(8px);
   }
 
+  /* Historically carried a red left border — now identical to .glass-card;
+     kept as a class so existing markup doesn't need touching. */
   .glass-card-accent {
     background: rgba(17, 17, 17, 0.8);
     border: 1px solid #1e1e1e;
-    border-left: 3px solid #ED1131;
     border-radius: 8px;
     backdrop-filter: blur(8px);
   }

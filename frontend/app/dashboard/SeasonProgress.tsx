@@ -37,7 +37,7 @@ export default function SeasonProgress({
           </p>
         </div>
         <div className="text-right">
-          <span className="font-(family-name:--font-orbitron) text-2xl sm:text-3xl font-black text-f1-red tabular-nums leading-none">
+          <span className="font-(family-name:--font-orbitron) text-2xl sm:text-3xl font-black text-text-primary tabular-nums leading-none">
             {pct}%
           </span>
           <p className="text-[0.55rem] font-(family-name:--font-dm-mono) uppercase tracking-widest text-text-dim mt-1">
@@ -60,9 +60,9 @@ export default function SeasonProgress({
                 background: isNext
                   ? "var(--color-f1-red)"
                   : done
-                    ? "linear-gradient(180deg, rgba(237,17,49,0.75) 0%, rgba(139,10,31,0.85) 100%)"
+                    ? "rgba(237,17,49,0.45)"
                     : "var(--color-surface-3)",
-                boxShadow: isNext ? "0 0 12px rgba(237,17,49,0.85)" : undefined,
+                boxShadow: isNext ? "0 0 8px rgba(237,17,49,0.5)" : undefined,
               }}
             />
           )
@@ -71,7 +71,7 @@ export default function SeasonProgress({
 
       {/* Footer stats */}
       <div className="grid grid-cols-3 gap-3 mt-4">
-        <FootStat value={completed} label="Completed" accent="var(--color-f1-red)" />
+        <FootStat value={completed} label="Completed" />
         <FootStat value={remaining} label="Remaining" />
         <div className="flex items-center gap-2 min-w-0" style={{ boxShadow: "inset 2px 0 0 var(--color-border-muted)", paddingLeft: "0.6rem" }}>
           {nextFlag && (
