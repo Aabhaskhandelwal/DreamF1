@@ -2,6 +2,12 @@ services:
   db:
     image: postgres:16
     restart: unless-stopped
+    # Caps db's cgroup so a runaway query OOMs the container (auto-restarts via
+    # `restart: unless-stopped`), not an arbitrary host process like sshd — see
+    # "Intermittent outages" / "SSH Connection reset by peer" incidents in CLAUDE.md.
+    # 150m covers observed usage (~42MB) with headroom; leaves the rest of the
+    # 916MB-usable t3.micro for backend + host OS.
+    mem_limit: 150m
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -17,6 +23,10 @@ services:
   backend:
     image: ${ECR_REGISTRY}/myf1circle-backend:${IMAGE_TAG}
     restart: unless-stopped
+    # 650m covers the observed single-round FastF1 peak (~520MB for two rounds
+    # pre-fix; the app-level session cache now evicts to one round, ~390MB seen)
+    # plus request overhead, while still leaving the host OS/sshd their own room.
+    mem_limit: 650m
     ports:
       - "8080:8080"
     depends_on:
